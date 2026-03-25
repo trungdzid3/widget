@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+*-bounds.json
+ecosystem-state-*.json
+.DS_Store
+Thumbs.db
+config-private.json

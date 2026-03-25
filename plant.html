@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Trạm Lofi Focus</title>
+    <link rel="stylesheet" href="plant.css">
+</head>
+<body>
+    <div class="plant-container">
+        <script src="rpg-system.js"></script>
+        <div class="header">
+            <span>🍅 Lofi Focus</span>
+            <span class="drag-handle" title="Kéo viền để di chuyển">🖐</span>
+        </div>
+        
+        <audio id="lofi-audio" preload="none"></audio>
+
+        <div class="pomodoro">
+            <select id="task-type" class="task-selector">
+                <option value="egg">15 Phút - Ấp Trứng Rồng</option>
+                <option value="plant" selected>25 Phút - Trồng Cây Lofi</option>
+                <option value="house">45 Phút - Xây Lâu Đài</option>
+                <option value="potion">60 Phút - Luyện Tiên Đan</option>
+            </select>
+            
+            <div class="main-display">
+                <div id="plant-stage" class="stage">🌱</div>
+                <div class="info-bar">
+                    <div id="timer" class="time">25:00</div>
+                    <div class="msg" id="pomo-msg">Chờ lệnh...</div>
+                </div>
+            </div>
+            
+            <div class="control-row">
+                <button id="pomo-play">Bắt Đầu</button>
+                <button id="pomo-reset" class="btn-alt">Huỷ</button>
+                <div class="vol-control">
+                    <span id="vol-icon">🔉</span>
+                    <input type="range" id="vol-slider" min="0" max="100" value="50">
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="plant.js"></script>
+</body>
+</html>

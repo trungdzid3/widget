@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Bảng Nhiệm Vụ RPG</title>
+    <link rel="stylesheet" href="note.css">
+</head>
+<body>
+    <div class="quest-container">
+        <div class="header">
+            <span class="title-text">⚔️ Sổ Xứ Mệnh RPG</span>
+            <span class="drag-handle" title="Kéo viền để di chuyển">🖐</span>
+        </div>
+        
+        <!-- Bảng chỉ số Nhân vật (Gamification) -->
+        <div class="rpg-dashboard">
+            <div class="avatar">🌟</div>
+            <div class="stats">
+                <div class="stats-top">
+                    <div class="level-text">Lv. <span id="lv-num">1</span> <span class="class-name" id="class-name">(Tân Binh)</span></div>
+                    <div class="coin-display" title="Kho Báu">🪙 <span id="player-coins">0</span></div>
+                </div>
+                <div class="exp-box">
+                    <div class="exp-bar"><div class="exp-fill" id="exp-fill" style="width: 0%;"></div></div>
+                    <div class="exp-text"><span id="exp-current">0</span>/<span id="exp-max">100</span> XP</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="task-list" id="task-list">
+            <!-- Render Task Javascript -->
+        </div>
+
+        <div class="add-box">
+            <input type="text" id="new-task" placeholder="Nhiệm vụ mới... (Enter)">
+            <button id="add-btn" title="Giao nhiệm vụ">✚</button>
+        </div>
+    </div>
+    <script src="rpg-system.js"></script>
+    <script src="note.js"></script>
+</body>
+</html>

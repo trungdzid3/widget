@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trại Thú Ảo</title>
+    <link rel="stylesheet" href="pet.css">
+</head>
+<body>
+    <div class="pet-container" id="pet-container">
+        <div class="pet-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="title" title="Tinh Linh Thú">🐾 Tinh Linh Thú</span>
+            </div>
+            <div class="pet-coins" title="Tiền Xu">🪙 <span id="coin-display">0</span></div>
+            <span class="drag-handle" title="Kéo để di chuyển">🖐</span>
+        </div>
+
+        <!-- Shop Modal -->
+        <div id="shop-modal" class="shop-modal" style="display:none;">
+            <div class="shop-content">
+                <div class="shop-header">🛒 Cửa Hàng <span id="close-shop-btn" class="close-btn" onclick="document.getElementById('shop-modal').style.display='none'">✖</span></div>
+                <div class="shop-items">
+                    <div class="shop-item" onclick="buyShopItem('cookie', 5, 'Bánh Quy', 'food', 15)">
+                        <div class="item-icon">🍪</div>
+                        <div class="item-name">Bánh Quy (+15XP)</div>
+                        <div class="item-cost">5 Xu</div>
+                    </div>
+                    <div class="shop-item" onclick="buyShopItem('apple', 20, 'Táo Vàng', 'food', 50)">
+                        <div class="item-icon">🍎</div>
+                        <div class="item-name">Táo Vàng (+50XP)</div>
+                        <div class="item-cost">20 Xu</div>
+                    </div>
+                    <div class="shop-item" onclick="buyShopItem('meat', 40, 'Đùi Thịt', 'food', 120)">
+                        <div class="item-icon">🍖</div>
+                        <div class="item-name">Đùi Thịt (+120XP)</div>
+                        <div class="item-cost">40 Xu</div>
+                    </div>
+                    <div class="shop-item" onclick="buyShopItem('potion', 50, 'Thuốc Hồi Kỹ Năng', 'instant', 0)">
+                        <div class="item-icon">🧪</div>
+                        <div class="item-name">Thuốc Hồi KN (Dùng Ngay)</div>
+                        <div class="item-cost">50 Xu</div>
+                    </div>
+                    <div class="shop-item" onclick="buyShopItem('box', 30, 'Hộp Bí Ẩn', 'instant', 0)">
+                        <div class="item-icon">🎁</div>
+                        <div class="item-name">Hộp Bí Ẩn (Dùng Ngay)</div>
+                        <div class="item-cost">30 Xu</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Modal (Túi thức ăn) -->
+        <div id="inventory-modal" class="shop-modal" style="display:none;">
+            <div class="shop-content">
+                <div class="shop-header">🎒 Túi Food <span class="close-btn" onclick="document.getElementById('inventory-modal').style.display='none'">✖</span></div>
+                <div class="shop-items" id="inventory-items">
+                    <!-- Sẽ render bằng JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Chọn loài (hiện chỉ khi chưa có pet hoặc đang ở trứng lv1) -->
+        <div id="species-picker" class="species-picker" style="display:none;">
+            <div class="picker-title">✨ Chọn Tinh Linh</div>
+            <div class="species-grid">
+                <button class="species-btn" data-species="cat">🐱<br><small>Mèo Thần</small></button>
+                <button class="species-btn" data-species="dragon">🐉<br><small>Rồng Thần</small></button>
+                <button class="species-btn" data-species="bunny">🐰<br><small>Thỏ Trăng</small></button>
+                <button class="species-btn" data-species="butterfly">🦋<br><small>Bướm Tiên</small></button>
+            </div>
+        </div>
+
+        <!-- Giao diện Pet chính -->
+        <div id="pet-main">
+            <div class="pet-stage">
+                <div class="pet-sprite" id="pet-sprite">🥚</div>
+                <div class="evolution-fx" id="evo-fx"></div>
+            </div>
+
+            <div class="pet-dashboard">
+                <div class="pet-info">
+                    <div class="pet-name" id="pet-name">Trứng Bí Ẩn</div>
+                    <div class="pet-level">Lv.<span id="pet-lv">1</span></div>
+                </div>
+
+                <!-- Thanh EXP của Pet -->
+                <div class="exp-bar-wrap">
+                    <div class="exp-bar-track">
+                        <div class="exp-bar-fill" id="exp-bar"></div>
+                    </div>
+                    <div class="exp-bar-label"><span id="pet-exp-cur">0</span> / <span id="pet-exp-req">60</span> XP</div>
+                </div>
+
+                <div class="pet-actions">
+                    <div class="action-row">
+                        <button id="feed-btn" class="action-btn feed" onclick="window.openInventory()">🎒 Túi Đồ</button>
+                        <button id="shop-btn" class="action-btn shop" onclick="document.getElementById('shop-modal').style.display='flex'">🛒 Mua Đồ</button>
+                    </div>
+                    <button id="skill-btn" class="action-btn skill-locked" disabled>✨ KN (Khóa)</button>
+                </div>
+            </div>
+
+            <!-- Trạng thái Buff đang chạy -->
+            <div id="buff-status" class="buff-status" style="display:none;"></div>
+
+
+            <!-- Đổi loài (chỉ hiện khi lv 1) -->
+            <button id="change-species-btn" class="change-species-btn" style="display:none;" title="Đổi loài (chỉ khi Lv.1)">↩ Đổi Loài</button>
+        </div>
+    </div>
+    <script src="rpg-system.js"></script>
+    <script src="pet.js"></script>
+</body>
+</html>

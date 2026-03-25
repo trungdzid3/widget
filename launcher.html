@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="launcher.css">
+    <title>Thanh Bên Lofi</title>
+</head>
+
+<body>
+    <div class="dashboard">
+        <button id="close-btn" title="Gập thanh bên (Đóng)">▶</button>
+        <div class="content-wrapper">
+            <div>
+                <h1 class="title">🐰 Điều Khiển</h1>
+
+                <div class="widget-list">
+                    <div class="widget-item">
+                        <span class="icon">🌤️</span>
+                        <div class="info">
+                            <h2>Thời Tiết Lofi</h2>
+                            <p>Dự báo & Đồng hồ</p>
+                        </div>
+                        <button class="pin-btn" id="pin-weather" title="Hoá đá xuyên chuột"></button>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-weather">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="widget-item">
+                        <span class="icon">📝</span>
+                        <div class="info">
+                            <h2>Sổ Xứ Mệnh (RPG)</h2>
+                            <p>To-do list & EXP</p>
+                        </div>
+                        <button class="pin-btn" id="pin-note" title="Hoá đá xuyên chuột"></button>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-note">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="widget-item">
+                        <span class="icon">🪴</span>
+                        <div class="info">
+                            <h2>Cây Lofi</h2>
+                            <p>Đồng hồ sinh thái</p>
+                        </div>
+                        <button class="pin-btn" id="pin-plant" title="Hoá đá xuyên chuột"></button>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-plant">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="widget-item">
+                        <span class="icon">🐾</span>
+                        <div class="info">
+                            <h2>Tinh Linh Thú</h2>
+                            <p>Tiêu thụ hạt EXP</p>
+                        </div>
+                        <button class="pin-btn" id="pin-pet" title="Hoá đá xuyên chuột"></button>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-pet">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-box">
+                    <span style="font-weight: bold; font-size: 15px;">Kiểu mở:</span>
+                    <label class="radio-opt"><input type="radio" name="handleStyle" value="bubble">Nổi</label>
+                    <label class="radio-opt"><input type="radio" name="handleStyle" value="edge">Bám</label>
+                </div>
+            </div>
+
+            <div class="footer-hint">Bấm 🧊 để <b>Hoá Đá</b> Widget.<br>Chuột sẽ Click đi xuyên qua nó!</div>
+        </div>
+    </div>
+    <script src="launcher.js"></script>
+</body>
+
+</html>
