@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Menu Summoner</title>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; background: transparent; height: 100%; user-select: none; }
+        .wrapper { width: 100%; height: 100%; display: flex; align-items: center; }
+        
+        .handle { 
+            background: rgba(255, 237, 242, 0.95);
+            border: 3px solid #ff7aa2; 
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-shadow: -2px 2px 4px rgba(0,0,0,0.15);
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        /* Chế độ Bám Cạnh (Tai Thỏ) */
+        body.edge .wrapper { justify-content: flex-end; } 
+        body.edge .handle { 
+            width: 20px; height: 52px; 
+            border-right: none;
+            border-radius: 12px 0 0 12px;
+            cursor: grab;
+        }
+        body.edge .handle img { width: 14px; height: 14px; pointer-events: none; }
+
+        /* Chế độ Bóng nổi (Chat Head) */
+        body.bubble .wrapper { justify-content: center; } 
+        body.bubble .handle {
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            cursor: grab;
+        }
+        body.bubble .handle img { width: 28px; height: 28px; pointer-events: none; }
+        
+        .handle:hover { background: rgba(255, 255, 255, 1); }
+        .handle:active { transform: scale(0.94); cursor: grabbing; background: rgba(230, 200, 215, 0.9); }
+    </style>
+</head>
+<body class="bubble">
+    <div class="wrapper">
+        <div class="handle" id="btn" title="Kéo và nhả (Drag) để dời vị trí. Click thả ngay để Mở Menu">
+            <img src="Bunny_Sunny.png">
+        </div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+        const btn = document.getElementById('btn');
+
+        let isDragging = false;
+        let diffX = 0, diffY = 0;
+        let hasMoved = false;
+        let initialScreenX = 0, initialScreenY = 0;
+
+        btn.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Chuột trái
+            isDragging = true;
+            hasMoved = false;
+            diffX = e.clientX;
+            diffY = e.clientY;
+            initialScreenX = e.screenX;
+            initialScreenY = e.screenY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                if (!hasMoved) {
+                    if (Math.abs(e.screenX - initialScreenX) > 2 || Math.abs(e.screenY - initialScreenY) > 2) {
+                        hasMoved = true;
+                    }
+                }
+                if (hasMoved) {
+                    ipcRenderer.send('handle-drag', e.screenX - diffX, e.screenY - diffY);
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                ipcRenderer.send('handle-drag-end');
+                
+                if (!hasMoved) {
+                    ipcRenderer.send('open-sidebar');
+                }
+            }
+        });
+        
+        ipcRenderer.invoke('get-handle-style').then(style => {
+            document.body.className = style;
+        });
+
+        ipcRenderer.on('set-style', (e, styleName) => {
+            document.body.className = styleName;
+        });
+    </script>
+</body>
+</html>
