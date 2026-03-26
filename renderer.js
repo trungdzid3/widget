@@ -3,7 +3,10 @@
 const $ = (id) => document.getElementById(id);
 const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const WEATHER_CACHE_KEY = 'weather-widget-cache-v1';
+const SAVED_LOCATIONS_KEY = 'weather-widget-saved-locations-v1';
+const LAST_CITY_VALUE_KEY = 'weather-widget-last-city-v1';
 const FETCH_TIMEOUT_MS = 12000;
+const GEO_FETCH_TIMEOUT_MS = 9000;
 const RETRY_BASE_MS = 2000;
 const RETRY_MAX_MS = 60000;
 
@@ -20,6 +23,8 @@ let cloudsHeavyP = [];
 let retryAttempt = 0;
 let retryTimer = null;
 let activeFetchController = null;
+let savedLocations = [];
+let isResolvingGeo = false;
 
 // Biến cho hiệu ứng Mùa và Âm thanh
 let seasonParticles = [];
@@ -705,10 +710,263 @@ function loadCache(lat, lon) {
     }
 }
 
+function toCityValue(lat, lon) {
+    return `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
+}
+
+function fromCityValue(value) {
+    const [lat, lon] = String(value).split(',').map(Number);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    return { lat, lon };
+}
+
+function getCustomAnchorOption() {
+    return $('city-select').querySelector('option[value="custom"]');
+}
+
+function getCityOptionByValue(value) {
+    return Array.from($('city-select').options).find(opt => opt.value === value) || null;
+}
+
+function upsertCityOption(item, options = {}) {
+    const value = toCityValue(item.lat, item.lon);
+    let opt = getCityOptionByValue(value);
+
+    if (!opt) {
+        opt = document.createElement('option');
+        const anchor = getCustomAnchorOption();
+        if (anchor) $('city-select').insertBefore(opt, anchor);
+        else $('city-select').appendChild(opt);
+    }
+
+    opt.value = value;
+    opt.textContent = item.label;
+
+    if (item.deletable) {
+        opt.dataset.deletable = '1';
+        opt.dataset.locationKey = item.key || value;
+    } else {
+        delete opt.dataset.deletable;
+        delete opt.dataset.locationKey;
+    }
+
+    if (options.select) $('city-select').value = value;
+    return opt;
+}
+
+function loadSavedLocations() {
+    try {
+        const raw = localStorage.getItem(SAVED_LOCATIONS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+            .map(item => ({
+                key: String(item.key || ''),
+                label: String(item.label || ''),
+                lat: Number(item.lat),
+                lon: Number(item.lon)
+            }))
+            .filter(item => item.label && Number.isFinite(item.lat) && Number.isFinite(item.lon));
+    } catch {
+        return [];
+    }
+}
+
+function saveSavedLocations() {
+    localStorage.setItem(SAVED_LOCATIONS_KEY, JSON.stringify(savedLocations));
+}
+
+function rememberSelectedCity(value) {
+    if (value && value !== 'custom') localStorage.setItem(LAST_CITY_VALUE_KEY, value);
+}
+
+function upsertSavedLocation(location, options = {}) {
+    const value = toCityValue(location.lat, location.lon);
+    const key = location.key || value;
+    const entry = {
+        key,
+        label: String(location.label || '📍 Địa điểm đã lưu'),
+        lat: Number(location.lat),
+        lon: Number(location.lon)
+    };
+
+    const existingIdx = savedLocations.findIndex(loc => loc.key === key || toCityValue(loc.lat, loc.lon) === value);
+    if (existingIdx >= 0) savedLocations[existingIdx] = entry;
+    else savedLocations.push(entry);
+
+    if (savedLocations.length > 20) {
+        savedLocations = savedLocations.slice(savedLocations.length - 20);
+    }
+
+    saveSavedLocations();
+    upsertCityOption({ ...entry, deletable: true }, { select: options.select });
+
+    if (options.select) {
+        rememberSelectedCity(value);
+    }
+    updateDeleteButtonState();
+}
+
+function restoreSavedLocationOptions() {
+    savedLocations.forEach(loc => {
+        upsertCityOption({ ...loc, deletable: true });
+    });
+}
+
+function restoreSelectedCity() {
+    const value = localStorage.getItem(LAST_CITY_VALUE_KEY);
+    if (!value) return false;
+    const opt = getCityOptionByValue(value);
+    if (!opt) return false;
+
+    $('city-select').value = value;
+    const coords = fromCityValue(value);
+    if (!coords) return false;
+    currentLat = coords.lat;
+    currentLon = coords.lon;
+    return true;
+}
+
+function updateDeleteButtonState() {
+    const btn = $('city-delete-btn');
+    if (!btn) return;
+
+    const selected = $('city-select').selectedOptions[0];
+    btn.disabled = !(selected && selected.dataset.deletable === '1');
+}
+
+function deleteSelectedSavedLocation() {
+    const selected = $('city-select').selectedOptions[0];
+    if (!selected || selected.dataset.deletable !== '1') return;
+
+    const value = selected.value;
+    const key = selected.dataset.locationKey || value;
+    savedLocations = savedLocations.filter(loc => loc.key !== key && toCityValue(loc.lat, loc.lon) !== value);
+    saveSavedLocations();
+    selected.remove();
+
+    const fallback = Array.from($('city-select').options).find(opt => opt.value !== 'custom');
+    if (fallback) {
+        $('city-select').value = fallback.value;
+        const coords = fromCityValue(fallback.value);
+        if (coords) {
+            currentLat = coords.lat;
+            currentLon = coords.lon;
+            rememberSelectedCity(fallback.value);
+            updateWeather();
+        }
+    }
+
+    updateDeleteButtonState();
+    showToast('🗑️ Đã xóa địa điểm đã lưu');
+}
+
+function uniqueParts(parts) {
+    const out = [];
+    parts.forEach(part => {
+        const clean = String(part || '').trim();
+        if (!clean) return;
+        if (!out.some(existing => existing.toLowerCase() === clean.toLowerCase())) {
+            out.push(clean);
+        }
+    });
+    return out;
+}
+
+async function reverseGeocodeDetailed(lat, lon) {
+    try {
+        const url = 'https://nominatim.openstreetmap.org/reverse'
+            + `?format=jsonv2&lat=${lat}&lon=${lon}`
+            + '&zoom=18&addressdetails=1&accept-language=vi';
+
+        const data = await fetchJsonWithTimeout(url);
+        const addr = data.address || {};
+
+        const ward = addr.suburb || addr.neighbourhood || addr.quarter || addr.hamlet || addr.village;
+        const district = addr.city_district || addr.district || addr.county || addr.municipality || addr.town || addr.city;
+        const province = addr.state || addr.province || addr.region;
+        const country = addr.country;
+
+        const parts = uniqueParts([ward, district, province, country]);
+        if (parts.length > 0) return parts.join(', ');
+
+        if (data.display_name) {
+            return data.display_name.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4).join(', ');
+        }
+    } catch {
+        // Fallback handled by caller
+    }
+    return null;
+}
+
+function getBrowserPosition() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation unsupported'));
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            pos => resolve({
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+                source: 'gps'
+            }),
+            err => reject(err),
+            {
+                timeout: 12000,
+                enableHighAccuracy: true,
+                maximumAge: 0
+            }
+        );
+    });
+}
+
+async function getIpFallbackPosition() {
+    try {
+        const data = await fetchJsonWithTimeout('https://ipapi.co/json/');
+        const lat = Number(data.latitude);
+        const lon = Number(data.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+        return {
+            lat,
+            lon,
+            source: 'ip',
+            roughLabel: uniqueParts([data.city, data.region, data.country_name]).join(', ')
+        };
+    } catch {
+        return null;
+    }
+}
+
+async function resolveCurrentPosition() {
+    try {
+        return await getBrowserPosition();
+    } catch (geoErr) {
+        const ipPos = await getIpFallbackPosition();
+        if (ipPos) return ipPos;
+        throw geoErr;
+    }
+}
+
 function clearRetryTimer() {
     if (retryTimer) {
         clearTimeout(retryTimer);
         retryTimer = null;
+    }
+}
+
+async function fetchJsonWithTimeout(url, timeoutMs = GEO_FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
@@ -779,36 +1037,43 @@ async function updateWeather() {
 }
 
 async function useGeolocation() {
+    if (isResolvingGeo) return;
+    isResolvingGeo = true;
+
     const btn = $('geo-btn');
     btn.classList.add('spinning');
     btn.textContent = '🔄';
+    setMetaStatus('📍 Đang xác định vị trí hiện tại...');
 
     try {
-        const pos = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-        });
+        const pos = await resolveCurrentPosition();
+        currentLat = pos.lat;
+        currentLon = pos.lon;
 
-        currentLat = pos.coords.latitude;
-        currentLon = pos.coords.longitude;
+        const detailedName = await reverseGeocodeDetailed(currentLat, currentLon);
+        const fallbackName = pos.roughLabel || 'Vị trí hiện tại';
+        const placeLabel = detailedName || fallbackName;
+        const prefix = pos.source === 'gps' ? '📍' : '📍~';
 
-        let geoOpt = document.getElementById('geo-opt');
-        if (!geoOpt) {
-            geoOpt = document.createElement('option');
-            geoOpt.id = 'geo-opt';
-            $('city-select').insertBefore(geoOpt, $('city-select').firstChild);
-        }
+        upsertSavedLocation({
+            key: 'auto-location',
+            label: `${prefix} ${placeLabel}`,
+            lat: currentLat,
+            lon: currentLon
+        }, { select: true });
 
-        geoOpt.value = `${currentLat},${currentLon}`;
-        geoOpt.textContent = '📍 Vị trí của bạn';
-        $('city-select').value = geoOpt.value;
-
-        showToast('✅ Đã lấy vị trí!');
+        previousCityValue = $('city-select').value;
+        updateDeleteButtonState();
+        if (pos.source === 'gps') showToast('✅ Đã lấy vị trí chi tiết!');
+        else showToast('ℹ️ GPS lỗi, dùng vị trí gần đúng theo mạng');
         await updateWeather();
     } catch {
         showToast('❌ Không lấy được vị trí!');
+        setMetaStatus('❌ Không thể xác định vị trí tự động', true);
     } finally {
         btn.classList.remove('spinning');
         btn.textContent = '📍';
+        isResolvingGeo = false;
     }
 }
 
@@ -838,13 +1103,18 @@ $('city-select').addEventListener('change', function onCityChange() {
         $('city-input').value = '';
         $('city-input').focus();
         this.value = previousCityValue; // Revert option để nếu huỷ search nó về thành phố cũ
+        updateDeleteButtonState();
         return;
     }
 
     previousCityValue = this.value;
-    const [lat, lon] = this.value.split(',').map(Number);
-    currentLat = lat;
-    currentLon = lon;
+    rememberSelectedCity(this.value);
+    updateDeleteButtonState();
+
+    const coords = fromCityValue(this.value);
+    if (!coords) return;
+    currentLat = coords.lat;
+    currentLon = coords.lon;
     currentFxName = 'none';
     retryAttempt = 0;
     clearRetryTimer();
@@ -854,6 +1124,7 @@ $('city-select').addEventListener('change', function onCityChange() {
 $('city-search-cancel').addEventListener('click', () => {
     $('city-search-box').style.display = 'none';
     $('city-select').style.display = 'block';
+    updateDeleteButtonState();
 });
 
 $('city-input').addEventListener('keydown', async (e) => {
@@ -872,27 +1143,25 @@ $('city-input').addEventListener('keydown', async (e) => {
                 const place = data.results[0];
                 const lat = place.latitude;
                 const lon = place.longitude;
-                const name = place.name;
+                const labelParts = uniqueParts([place.name, place.admin3, place.admin2, place.admin1, place.country]);
+                const label = `📌 ${labelParts.slice(0, 3).join(', ')}`;
 
-                // Add new auto-fetched option
-                const newOpt = document.createElement('option');
-                newOpt.value = `${lat},${lon}`;
-                newOpt.textContent = `📍 ${name}`;
+                upsertSavedLocation({
+                    key: `manual-${Date.now()}`,
+                    label,
+                    lat,
+                    lon
+                }, { select: true });
 
-                const sel = $('city-select');
-                // Chèn lên trên option cuối cùng (option custom)
-                sel.insertBefore(newOpt, sel.lastElementChild);
-                sel.value = newOpt.value;
-                previousCityValue = newOpt.value;
-
-                currentLat = lat;
-                currentLon = lon;
+                previousCityValue = $('city-select').value;
+                currentLat = Number(lat);
+                currentLon = Number(lon);
                 currentFxName = 'none';
                 retryAttempt = 0;
                 clearRetryTimer();
                 updateWeather();
 
-                showToast(`✅ Đã thêm: ${name}`);
+                showToast('✅ Đã lưu địa điểm mới');
             } else {
                 showToast('❌ Không tìm thấy!');
                 setMetaStatus(`❌ Không tìm thấy "${query}"!`, true);
@@ -904,10 +1173,12 @@ $('city-input').addEventListener('keydown', async (e) => {
             $('city-input').disabled = false;
             $('city-search-box').style.display = 'none';
             $('city-select').style.display = 'block';
+            updateDeleteButtonState();
         }
     }
 });
 
+$('city-delete-btn').addEventListener('click', deleteSelectedSavedLocation);
 $('geo-btn').addEventListener('click', useGeolocation);
 $('temp-display').addEventListener('click', toggleForecast);
 $('view-forecast').addEventListener('click', toggleForecast);
@@ -927,6 +1198,19 @@ document.addEventListener('visibilitychange', () => {
 
 setInterval(updateClock, 1000);
 setInterval(updateWeather, 300000);
+
+savedLocations = loadSavedLocations();
+restoreSavedLocationOptions();
+if (!restoreSelectedCity()) {
+    const selected = $('city-select').value;
+    const coords = fromCityValue(selected);
+    if (coords) {
+        currentLat = coords.lat;
+        currentLon = coords.lon;
+    }
+}
+previousCityValue = $('city-select').value;
+updateDeleteButtonState();
 
 initSeason();
 updateClock();
