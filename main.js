@@ -1,15 +1,45 @@
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const googleService = require('./googleService');
 
-// Tự động kiểm tra cập nhật
-autoUpdater.on('update-available', () => {
-    console.log('Có bản cập nhật mới!');
+// Tự động kiểm tra cập nhật (Cấu hình nâng cao)
+autoUpdater.autoDownload = true;
+
+autoUpdater.on('checking-for-update', () => {
+    console.log('Đang kiểm tra kết nối tới máy chủ cập nhật...');
 });
-autoUpdater.on('update-downloaded', () => {
-    autoUpdater.quitAndInstall();
+
+autoUpdater.on('update-available', () => {
+    console.log('Phát hiện bản cập nhật mới. Đang tải về ngầm...');
+});
+
+autoUpdater.on('error', (err) => {
+    console.error('Lỗi trong quá trình cập nhật:', err);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+    console.log('Tải xuống hoàn tất! Hiển thị thông báo...'); // Debug log
+    
+    // Tạm thời bỏ đi process.platform check để đơn giản hoá message
+    // Hiển thị hộp thoại yêu cầu người dùng xác nhận
+    dialog.showMessageBox({
+        type: 'info',
+        title: 'Cập nhật sẵn sàng',
+        message: `Phiên bản mới ${info.version} đã được tải về thành công!`,
+        detail: 'Ứng dụng cần khởi động lại để áp dụng các thay đổi mới nhất. Bạn có muốn thực hiện ngay không?',
+        buttons: ['Khởi động lại ngay', 'Để sau'],
+        defaultId: 0,
+        cancelId: 1
+    }).then((result) => {
+        if (result.response === 0) {
+            setImmediate(() => {
+                app.removeAllListeners('window-all-closed'); // Ngăn chặn sự kiện đóng cửa sổ mặc định
+                autoUpdater.quitAndInstall(false, true); // true = silent install (nếu có thể), false = force run app after
+            });
+        }
+    });
 });
 
 // Bỏ qua lỗi SSL mạng cho API weather

@@ -32,7 +32,7 @@
 
 ### Dành cho người dùng:
 1.  Vào mục **[Releases](https://github.com/trungdzid3/widget/releases)**.
-2.  Tải về file **`Pixel.Widget.Setup.1.1.0.exe`**.
+2.  Tải về file **`Pixel.Widget.Setup.1.1.1.exe`**.
 3.  Chạy bộ cài đặt và thưởng thức hệ sinh thái ngay trên màn hình của bạn!
 
 ### Dành cho nhà phát triển:
