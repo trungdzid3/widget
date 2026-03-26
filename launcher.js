@@ -49,9 +49,16 @@ styleRadios.forEach(radio => {
 });
 // Đồng bộ Setting khi mở
 ipcRenderer.invoke('get-handle-style').then(style => {
-    const r = document.querySelector(`input[value="${style}"]`);
-    if (r) r.checked = true;
+    const radio = document.querySelector(`input[name="handleStyle"][value="${style}"]`);
+    if(radio) radio.checked = true;
 });
+
+// Logic Khởi động cùng Windows
+const startupToggle = document.getElementById('toggle-startup');
+if(startupToggle) {
+    ipcRenderer.invoke('get-startup').then(enabled => startupToggle.checked = enabled);
+    startupToggle.addEventListener('change', (e) => ipcRenderer.send('toggle-startup', e.target.checked));
+}
 
 // Cho phép kéo trượt thanh Launcher đi mọi nơi (Ngoài các nút bấm)
 document.addEventListener('mousedown', (e) => {

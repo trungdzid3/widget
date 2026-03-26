@@ -1,8 +1,28 @@
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog } = require('electron');
+const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const googleService = require('./googleService');
+
+// Helper: Fetch using Electron's native network stack (better proxy/DNS support than Node fetch)
+function backgroundFetch(url) {
+    return new Promise((resolve, reject) => {
+        const request = net.request(url);
+        request.on('response', (response) => {
+            let data = '';
+            response.on('data', (chunk) => data += chunk);
+            response.on('end', () => {
+                if(response.statusCode >= 200 && response.statusCode < 300) {
+                    try { resolve(JSON.parse(data)); } catch(e) { reject(e); }
+                } else {
+                    reject(new Error(`HTTP Status: ${response.statusCode}`));
+                }
+            });
+        });
+        request.on('error', (error) => reject(error));
+        request.end();
+    });
+}
 
 // Tự động kiểm tra cập nhật (Cấu hình nâng cao)
 autoUpdater.autoDownload = true;
@@ -212,7 +232,8 @@ function createWindows() {
         x: weatherBounds.x, y: weatherBounds.y,
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
         show: true, opacity: mState.active.weather ? 1 : 0,
-        webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, sandbox: true }
+        // Tắt Sandbox để Geolocation hoạt động ổn định hơn trên Windows
+        webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, sandbox: false }
     });
     weatherWin.loadFile('index.html');
     weatherWin.on('moved', () => saveBounds('weather', weatherWin));
@@ -271,6 +292,14 @@ ipcMain.on('rpg-state-update', (e, state) => {
 });
 
 ipcMain.handle('get-widget-states', () => mState);
+ipcMain.handle('get-startup', () => app.getLoginItemSettings().openAtLogin);
+
+ipcMain.on('toggle-startup', (e, checked) => {
+    app.setLoginItemSettings({
+        openAtLogin: checked,
+        path: app.getPath('exe')
+    });
+});
 
 ipcMain.on('toggle-widget', (event, name, isVisible) => {
     mState.active[name] = isVisible;
@@ -319,6 +348,38 @@ app.whenReady().then(() => {
     ipcMain.handle('g-add-task', async (e, title) => await googleService.addTask(title));
     ipcMain.handle('g-complete-task', async (e, id) => await googleService.completeTask(id));
     ipcMain.handle('g-remove-task', async (e, id) => await googleService.removeTask(id));
+    
+    // API Định vị IP (Node.js Fetch Bypass CORS)
+    ipcMain.handle('get-ip-location', async () => {
+        console.log('[Main] Getting IP Location via Electron Net...');
+        try {
+            // Priority 0: ip-api.com (Very reliable, HTTP allowed in Node)
+            const data = await backgroundFetch('http://ip-api.com/json/');
+            if(data.status === 'success') {
+                console.log('[Main] IP Location success via ip-api.com');
+                return { lat: data.lat, lon: data.lon, city: data.city, region: data.regionName, country: data.country };
+            }
+        } catch(e) { console.log('[Main] IP Fallback 0 failed (Status/Net):', e.message); }
+
+        try {
+            // Priority 1: ipwho.is (Fast, detailed)
+            const data = await backgroundFetch('https://ipwho.is/');
+            if(data.success) {
+                console.log('[Main] IP Location success via ipwho.is');
+                return { lat: data.latitude, lon: data.longitude, city: data.city, region: data.region, country: data.country };
+            }
+        } catch(e) { console.log('[Main] IP Fallback 1 failed (Status/Net):', e.message); }
+
+        try {
+            // Priority 2: ipapi.co (Backup)
+            const data = await backgroundFetch('https://ipapi.co/json/');
+            console.log('[Main] IP Location success via ipapi.co');
+            return { lat: data.latitude, lon: data.longitude, city: data.city, region: data.region, country: data.country_name };
+        } catch(e) { console.log('[Main] IP Fallback 2 failed (Status/Net):', e.message); }
+
+        console.log('[Main] All IP Location services failed.');
+        return null;
+    });
     // =======================================================
 
     session.defaultSession.setPermissionRequestHandler((webContents, prop, callback) => {

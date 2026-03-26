@@ -914,7 +914,7 @@ function getBrowserPosition() {
             }),
             err => reject(err),
             {
-                timeout: 12000,
+                timeout: 7000,
                 enableHighAccuracy: true,
                 maximumAge: 0
             }
@@ -922,22 +922,42 @@ function getBrowserPosition() {
     });
 }
 
-async function getIpFallbackPosition() {
-    try {
-        const data = await fetchJsonWithTimeout('https://ipapi.co/json/');
-        const lat = Number(data.latitude);
-        const lon = Number(data.longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
-        return {
-            lat,
-            lon,
-            source: 'ip',
-            roughLabel: uniqueParts([data.city, data.region, data.country_name]).join(', ')
-        };
-    } catch {
-        return null;
+async function getIpFallbackPosition() {
+    // Use IPC to Main Process for reliable IP Geolocation (no CORS, no Mixed Content issues)
+    if (window.widgetMeta && window.widgetMeta.getIpLocation) {
+        try {
+            console.log('Requesting IP location from main process...');
+            const data = await window.widgetMeta.getIpLocation();
+            if (data && data.lat && data.lon) {
+                console.log('check IP location success:', data);
+                return {
+                    lat: data.lat,
+                    lon: data.lon,
+                    source: 'ip',
+                    roughLabel: data.city ? `${data.city}, ${data.country}` : data.country
+                };
+            }
+        } catch (err) {
+            console.error('IPC getIpLocation failed:', err);
+        }
     }
+
+    // Fallback logic in Renderer (likely to fail due to CORS/CORB if not handled)
+    // trying ipapi.co
+    try {
+        const data = await fetchJsonWithTimeout('https://ipapi.co/json/', 5000);
+        if (data.latitude && data.longitude) {
+            return {
+                lat: data.latitude,
+                lon: data.longitude,
+                source: 'ip',
+                roughLabel: [data.city, data.region, data.country_name].filter(Boolean).join(', ')
+            };
+        }
+    } catch(e) { console.warn('ipapi.co renderer fallback failed:', e); }
+    
+    return null;
 }
 
 async function resolveCurrentPosition() {
@@ -1041,9 +1061,8 @@ async function useGeolocation() {
     isResolvingGeo = true;
 
     const btn = $('geo-btn');
-    btn.classList.add('spinning');
-    btn.textContent = '🔄';
-    setMetaStatus('📍 Đang xác định vị trí hiện tại...');
+    btn.classList.add('pulsing');
+    setMetaStatus('📡 Đang dò tìm tín hiệu vệ tinh...');
 
     try {
         const pos = await resolveCurrentPosition();
@@ -1069,10 +1088,9 @@ async function useGeolocation() {
         await updateWeather();
     } catch {
         showToast('❌ Không lấy được vị trí!');
-        setMetaStatus('❌ Không thể xác định vị trí tự động', true);
+        setMetaStatus('❌ Tín hiệu yếu, hãy nhập thủ công', true);
     } finally {
-        btn.classList.remove('spinning');
-        btn.textContent = '📍';
+        btn.classList.remove('pulsing');
         isResolvingGeo = false;
     }
 }
