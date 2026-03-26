@@ -8,7 +8,6 @@
 
 ### 🌤️ Widget Thời Tiết (Weather)
 *   Hiển thị thời tiết thực tế tại mọi vị trí thông qua bản đồ.
-*   Nhân vật **Chibi Nami (One Piece)** sẽ tự động thay đổi trang phục (Skin) dựa trên điều kiện thời tiết: Nắng, Mưa, Tuyết, hoặc Mây.
 
 ### 🪴 Chậu Cây Lofi (Pomodoro Focus)
 *   Đồng hồ tập trung Pomodoro tích hợp nghe nhạc Lofi từ YouTube.
