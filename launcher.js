@@ -28,6 +28,14 @@ wNames.forEach(w => {
 
 // Update state on load
 ipcRenderer.invoke('get-widget-states').then(s => {
+    syncToggles(s);
+});
+
+ipcRenderer.on('sync-launcher-ui', (e, state) => {
+    syncToggles(state);
+});
+
+function syncToggles(s) {
     wNames.forEach(w => {
         if (refs[w].toggle) refs[w].toggle.checked = s.active[w] || false;
         if (refs[w].pin) {
@@ -35,23 +43,10 @@ ipcRenderer.invoke('get-widget-states').then(s => {
             else refs[w].pin.classList.remove('active');
         }
     });
-});
+}
 
 const closeBtn = document.getElementById('close-btn');
 if (closeBtn) closeBtn.onclick = () => ipcRenderer.send('close-sidebar');
-
-// Gắn bộ điều khiển giao diện Mào Đầu (Handle Style)
-const styleRadios = document.querySelectorAll('input[name="handleStyle"]');
-styleRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        if (e.target.checked) ipcRenderer.send('change-handle-style', e.target.value);
-    });
-});
-// Đồng bộ Setting khi mở
-ipcRenderer.invoke('get-handle-style').then(style => {
-    const radio = document.querySelector(`input[name="handleStyle"][value="${style}"]`);
-    if(radio) radio.checked = true;
-});
 
 // Logic Khởi động cùng Windows
 const startupToggle = document.getElementById('toggle-startup');
@@ -97,9 +92,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const ro = new ResizeObserver(entries => {
         for (const entry of entries) {
-            // contentRect = content only (không padding, không border)
-            // dashboard: padding 28px + border 8px + buffer font 10px = +46
-            const h = Math.ceil(entry.contentRect.height) + 46;
+            // Margin top 2px + Margin bottom 9px = 11px
+            const h = entry.target.offsetHeight + 11;
             ipcRenderer.send('resize-launcher', h);
         }
     });

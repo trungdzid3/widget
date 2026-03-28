@@ -9,12 +9,32 @@ const audioPlayer = document.getElementById('lofi-audio');
 const volSlider = document.getElementById('vol-slider');
 const volIcon = document.getElementById('vol-icon');
 
-const musicRadios = [
+const { ipcRenderer } = require('electron');
+
+let musicRadios = [
     'https://streams.ilovemusic.de/iloveradio17.mp3',
     'https://streams.ilovemusic.de/iloveradio10.mp3',
     'https://cdn.stream.chillhop.com/audio/chillhop-stream-live-128.mp3',
     'https://stream.zeno.fm/f3wvbbqmdg8uv'
 ];
+
+const sunnyPlaylists = [
+    'https://cdn.stream.chillhop.com/audio/chillhop-stream-live-128.mp3',
+    'https://streams.ilovemusic.de/iloveradio17.mp3',
+];
+
+const rainyPlaylists = [
+    'https://stream.zeno.fm/f3wvbbqmdg8uv', 
+    'https://streams.ilovemusic.de/iloveradio10.mp3'
+];
+
+ipcRenderer.on('weather-impact', (e, data) => {
+    if (data.fx.includes('rain') || data.fx === 'thunder') {
+        musicRadios = rainyPlaylists;
+    } else {
+        musicRadios = sunnyPlaylists;
+    }
+});
 
 let isMuted = false;
 audioPlayer.volume = volSlider.value / 100;
@@ -176,7 +196,7 @@ playBtn.addEventListener('click', () => {
             playBtn.innerText = 'Tiếp Nghỉ';
             msgBox.innerText = 'Vẫn chưa hết giải lao!';
         } else {
-            playBtn.innerText = 'Tiếp Cày';
+            playBtn.innerText = 'Tiếp';
             msgBox.innerText = 'Đang lười hả?';
             audioPlayer.pause();
         }
@@ -185,6 +205,19 @@ playBtn.addEventListener('click', () => {
 });
 
 resetBtn.addEventListener('click', () => {
+    let isPenalty = false;
+    if (!isBreakMode && timeLeft < POMO_TIME && timeLeft > 0) {
+        isPenalty = true;
+        if (typeof RPG !== 'undefined') {
+            RPG.state.currentXP -= 5;
+            if (RPG.state.currentXP < 0) RPG.state.currentXP = 0;
+            RPG.save();
+        }
+        msgBox.innerText = 'Trừ 5 EXP! 🥀';
+    } else {
+        msgBox.innerText = 'Đã đặt lại!';
+    }
+
     isRunning = false;
     isBreakMode = false; // Cancel Giải Lao ngay lập tức
     clearInterval(timer);
@@ -195,9 +228,13 @@ resetBtn.addEventListener('click', () => {
     timeLeft = POMO_TIME;
 
     playBtn.innerText = 'Bắt Đầu';
-    msgBox.innerText = 'Đã đặt lại!';
     stageDisplay.classList.remove('breath');
-    updateDisplay();
+    
+    if (isPenalty) {
+        stageDisplay.innerText = '🥀';
+    } else {
+        updateDisplay();
+    }
 
     audioPlayer.pause();
 });

@@ -74,6 +74,35 @@ const coinDisplay = document.getElementById('coin-display');
 const closeShopBtn = document.getElementById('close-shop-btn');
 const { ipcRenderer } = require('electron');
 
+let currentWeather = { temp: 25, desc: 'Bình thường', fx: 'none' };
+let weatherComplaints = [];
+
+ipcRenderer.on('weather-impact', (e, data) => {
+    currentWeather = data;
+    // Mưa/Bão thì thú cưng dễ buồn/Sấm sét giật mình
+    if (data.fx.includes('rain') || data.fx === 'thunder') {
+        petInteractionState = 'idle'; // Tạm trốn
+        weatherComplaints = ['⛈️ Sợ sấm chớp quá!', '🌧️ Mưa ướt hết lông rồi...', '💧 Em không muốn đi dạo đâu!', '🌩️ Ôi sấm kìa!'];
+        showToast('🌨️ Trời mưa quá, Pet đang run rẩy!');
+    } else if (data.temp > 35) {
+        weatherComplaints = ['🔥 Nóng chảy mỡ!', '☀️ Nóng quá đi mất!', '🥵 Cho em xin ly nước đá!', '🏜️ Cứu tôi với, khát quá!'];
+        showToast('🔥 Nóng rát quá, mua nước cho Pet đi!');
+    } else if (data.temp < 15) {
+        weatherComplaints = ['❄️ Lạnh run người!', '🧊 Đắp chăn cho em với!', '⛄ Tuyết rơi thì mệt lắm...', '🥶 Trùm mền ngủ ngon hơn.'];
+        showToast('❄️ Lạnh quá, Pet cần được sưởi ấm!');
+    } else {
+        weatherComplaints = ['🌸 Thời tiết hôm nay thật đẹp!', '☀️ Nắng ấm, đi chơi không boss?', '🌿 Gió hiu hiu thích quá!', '🐾 Ai dắt mị đi dạo nào!'];
+        showToast('🌤️ Trời đẹp, Pet đang rất vui vẻ!');
+    }
+});
+
+setInterval(() => {
+    if (weatherComplaints.length > 0 && Math.random() < 0.25) { // 25% chance every 12 seconds
+        const randomComplaint = weatherComplaints[Math.floor(Math.random() * weatherComplaints.length)];
+        showToast(randomComplaint);
+    }
+}, 12000);
+
 // ===== INIT =====
 if (!myPet.species) {
     showSpeciesPicker();
@@ -119,6 +148,8 @@ function updateSpriteClass() {
     if (petInteractionState === 'run') cls += ` interact-run`;
     else if (petInteractionState === 'sit') cls += ` interact-sit`;
     else if (petInteractionState === 'happy') cls += ` interact-happy`;
+    else if (currentWeather.fx === 'thunder') cls += ` anim-egg`; // Sợ sấm co rúm lại
+    else if (currentWeather.fx.includes('rain')) cls += ` interact-sit`; // Mưa thì nằm một chỗ
     else cls += ` ${stage.anim}`; 
 
     spriteEl.className = cls;

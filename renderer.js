@@ -650,6 +650,15 @@ function applyWeatherData(data) {
     $('wind').innerText = `${Math.round(cur.wind_speed_10m)} km/h`;
     setEffect(info.fx);
 
+    // Bắn trạng thái Thời tiết và Nhiệt độ sang Main Process để chia sẻ cho các Widget khác (Pet)
+    if (window.widgetMeta && window.widgetMeta.broadcastWeather) {
+        window.widgetMeta.broadcastWeather({
+            temp: Math.round(cur.temperature_2m),
+            desc: info.desc,
+            fx: info.fx
+        });
+    }
+
     // Kích hoạt âm thanh môi trường
     let soundType = 'none';
     if (info.fx.includes('rain') || info.fx === 'thunder') soundType = info.fx;
@@ -1083,8 +1092,12 @@ async function useGeolocation() {
 
         previousCityValue = $('city-select').value;
         updateDeleteButtonState();
-        if (pos.source === 'gps') showToast('✅ Đã lấy vị trí chi tiết!');
-        else showToast('ℹ️ GPS lỗi, dùng vị trí gần đúng theo mạng');
+        if (pos.source === 'gps') {
+            showToast('✅ Đã lấy vị trí chi tiết!');
+        } else {
+            showToast('⚠️ Định vị mạng có thể lệch. Khuyên dùng mục: 🔍 Tự tìm', 5000);
+            setMetaStatus('Sai số cao do dùng mạng, hãy 🔍 tìm tay!', true);
+        }
         await updateWeather();
     } catch {
         showToast('❌ Không lấy được vị trí!');
@@ -1233,3 +1246,16 @@ updateDeleteButtonState();
 initSeason();
 updateClock();
 updateWeather();
+
+// Auto-resize window based on content
+const widgetContainer = document.querySelector('.widget-container');
+if (widgetContainer && window.widgetMeta && window.widgetMeta.resizeWeather) {
+    const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+            // Margin top 2px + margin bottom 9px = 11px
+            const h = entry.target.offsetHeight + 11;
+            window.widgetMeta.resizeWeather(h);
+        }
+    });
+    resizeObserver.observe(widgetContainer);
+}

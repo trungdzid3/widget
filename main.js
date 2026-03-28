@@ -1,6 +1,24 @@
 const path = require('path');
 const fs = require('fs');
 const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net } = require('electron');
+
+// Gi?m t?i l?i ngh?n Cache dia khi t?o 6 c?a s? d? h?a thu? tinh (transparent) c?ng l?c
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch('disable-http-cache');
+// Bật định vị gốc của Windows 10/11 (không bị phụ thuộc Google Maps API Key gây lỗi GPS)
+app.commandLine.appendSwitch('enable-features', 'WinrtGeolocationImplementation');
+
+// --- TỐI ƯU HIỆU NĂNG (Bảo Toàn Khung Kính Trong Suốt) ---
+// Tăng tốc độ render và giảm tiêu thụ GPU/CPU (Không dùng app.disableHardwareAcceleration() vì sẽ làm mất transparent)
+app.commandLine.appendSwitch('enable-gpu-rasterization'); 
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('disable-software-rasterizer'); 
+app.commandLine.appendSwitch('enable-hardware-overlays');
+// Giới hạn bộ nhớ V8 Garbage Collector để tránh Leak RAM khi treo Background quá lâu
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
+// Tắt tính năng hạn chế Timer nền (Giúp cho việc đếm ngược / cập nhật thời tiết không bị đứng khi cửa sổ bị khuất)
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+
 const { autoUpdater } = require('electron-updater');
 const googleService = require('./googleService');
 
@@ -24,57 +42,83 @@ function backgroundFetch(url) {
     });
 }
 
-// Tự động kiểm tra cập nhật (Cấu hình nâng cao)
+// T? d?ng ki?m tra c?p nh?t (C?u h?nh n?ng cao)
 autoUpdater.autoDownload = true;
 
 autoUpdater.on('checking-for-update', () => {
-    console.log('Đang kiểm tra kết nối tới máy chủ cập nhật...');
+    console.log('?ang ki?m tra k?t n?i t?i m?y ch? c?p nh?t...');
 });
 
 autoUpdater.on('update-available', () => {
-    console.log('Phát hiện bản cập nhật mới. Đang tải về ngầm...');
+    console.log('Ph?t hi?n b?n c?p nh?t m?i. ?ang t?i v? ng?m...');
 });
 
 autoUpdater.on('error', (err) => {
-    console.error('Lỗi trong quá trình cập nhật:', err);
+    console.error('L?i trong qu? tr?nh c?p nh?t:', err);
 });
 
 autoUpdater.on('update-downloaded', (info) => {
-    console.log('Tải xuống hoàn tất! Hiển thị thông báo...'); // Debug log
+    console.log('T?i xu?ng ho?n t?t! Hi?n th? th?ng b?o...'); // Debug log
     
-    // Tạm thời bỏ đi process.platform check để đơn giản hoá message
-    // Hiển thị hộp thoại yêu cầu người dùng xác nhận
+    // T?m th?i b? di process.platform check d? don gi?n ho? message
+    // Hi?n th? h?p tho?i y?u c?u ngu?i d?ng x?c nh?n
     dialog.showMessageBox({
         type: 'info',
-        title: 'Cập nhật sẵn sàng',
-        message: `Phiên bản mới ${info.version} đã được tải về thành công!`,
-        detail: 'Ứng dụng cần khởi động lại để áp dụng các thay đổi mới nhất. Bạn có muốn thực hiện ngay không?',
-        buttons: ['Khởi động lại ngay', 'Để sau'],
+        title: 'C?p nh?t s?n s?ng',
+        message: `Phi?n b?n m?i ${info.version} d? du?c t?i v? th?nh c?ng!`,
+        detail: '?ng d?ng c?n kh?i d?ng l?i d? ?p d?ng c?c thay d?i m?i nh?t. B?n c? mu?n th?c hi?n ngay kh?ng?',
+        buttons: ['Kh?i d?ng l?i ngay', '?? sau'],
         defaultId: 0,
         cancelId: 1
     }).then((result) => {
         if (result.response === 0) {
             setImmediate(() => {
-                app.removeAllListeners('window-all-closed'); // Ngăn chặn sự kiện đóng cửa sổ mặc định
-                autoUpdater.quitAndInstall(false, true); // true = silent install (nếu có thể), false = force run app after
+                app.removeAllListeners('window-all-closed'); // Ngan ch?n s? ki?n d?ng c?a s? m?c d?nh
+                autoUpdater.quitAndInstall(false, true); // true = silent install (n?u c? th?), false = force run app after
             });
         }
     });
 });
 
-// Bỏ qua lỗi SSL mạng cho API weather
+// B? qua l?i SSL m?ng cho API weather
 app.commandLine.appendSwitch('ignore-certificate-errors');
 
 // --- Bounds Manager ---
 function getBounds(name, defaultWidth, defaultHeight, defaultX, defaultY) {
+    let bounds = { width: defaultWidth, height: defaultHeight, x: defaultX, y: defaultY };
     try {
         const file = path.join(app.getPath('userData'), `${name}-bounds.json`);
         if (fs.existsSync(file)) {
             const parsed = JSON.parse(fs.readFileSync(file, 'utf-8'));
-            if (parsed.width) return parsed;
+            if (typeof parsed.x === 'number') {
+                bounds.x = parsed.x;
+                bounds.y = parsed.y;
+                // Cố định Width/Height từ thông số hệ thống, KHÔNG lấy từ bộ nhớ đệm cũ (để chống lỗi dư khoảng trống)
+            }
         }
     } catch(e) {}
-    return { width: defaultWidth, height: defaultHeight, x: defaultX, y: defaultY };
+
+    // Auto-rescue logic: Bring off-screen windows back to main screen
+    const { screen } = require('electron'); // make sure screen is available
+    const displays = screen.getAllDisplays();
+    const isVisibleOnAnyDisplay = displays.some(display => {
+        const dx = display.bounds.x;
+        const dy = display.bounds.y;
+        const dw = display.bounds.width;
+        const dh = display.bounds.height;
+        // Check if bounds center is within this display
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + bounds.height / 2;
+        return (centerX >= dx && centerX <= dx + dw && centerY >= dy && centerY <= dy + dh);
+    });
+
+    if (!isVisibleOnAnyDisplay) {
+        console.log(`[Rescue] Display disconnected. Restoring ${name} bounds to defaults.`);
+        bounds.x = defaultX;
+        bounds.y = defaultY;
+    }
+
+    return bounds;
 }
 function saveBounds(name, win) {
     try {
@@ -107,29 +151,51 @@ if(mState.active.plant === undefined) mState.active.plant = false;
 if(mState.active.pet === undefined) mState.active.pet = false;
 if(!mState.pinned) mState.pinned = { weather: false, note: false, plant: false, pet: false };
 if(mState.pinned.pet === undefined) mState.pinned.pet = false;
-if(!mState.handleStyle) mState.handleStyle = 'bubble';
+if(!mState.handleStyle || mState.handleStyle === 'bubble') mState.handleStyle = 'edge';
 let isQuiting = false;
 
 function updateTrayMenu() {
     const contextMenu = Menu.buildFromTemplate([
         { label: 'Thanh Công Cụ Thông Minh (Smart Sidebar)', enabled: false },
         { type: 'separator' },
+        { label: '👁️ Hiện tất cả Widget', click: () => toggleAll(true) },
+        { label: '🙈 Ẩn tất cả Widget', click: () => toggleAll(false) },
+        { type: 'separator' },
         { label: '❌ Thoát Hệ Sinh Thái (Quit)', click: () => { isQuiting = true; app.quit(); } }
     ]);
     if (tray) tray.setContextMenu(contextMenu);
 }
 
+function toggleAll(show) {
+    const wins = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
+    for (let key in wins) {
+        mState.active[key] = show;
+        if (wins[key]) {
+            wins[key].setOpacity(show ? 1 : 0);
+            if (show) wins[key].setIgnoreMouseEvents(mState.pinned[key] || false, { forward: true });
+            else wins[key].setIgnoreMouseEvents(true);
+        }
+    }
+    saveState(mState);
+    if (launcherWin) launcherWin.webContents.send('sync-launcher-ui', mState);
+}
+
 function createWindows() {
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
-    // 0. Tai Thỏ
-    const handleBounds = getBounds('handle', 60, 60, width - 60, Math.floor(height / 2) - 30);
-    // Ép vị trí khi đang ở Bám Lề Phải (đề phòng trước đó lưu toạ độ bóng nổi rồi đổi state)
+    // 0. Tai Th?
+    const isEdge = mState.handleStyle === 'edge';
+    const hw = isEdge ? 24 : 50;
+    const hh = isEdge ? 60 : 50;
+
+    const handleBounds = getBounds('handle', hw, hh, width - hw, Math.floor(height / 2) - Math.floor(hh/2));
+    
+    // ?p v? tr? khi dang ? B?m L? Ph?i (d? ph?ng tru?c d? luu to? d? b?ng n?i r?i d?i state)
     let initX = handleBounds.x;
-    if (mState.handleStyle === 'edge') initX = width - 60;
+    if (isEdge) initX = width - hw;
 
     handleWin = new BrowserWindow({
-        width: 60, height: 60,
+        width: hw, height: hh,
         x: initX, y: handleBounds.y,
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
@@ -138,22 +204,22 @@ function createWindows() {
     handleWin.setAlwaysOnTop(true, 'screen-saver'); 
     handleWin.on('moved', () => saveBounds('handle', handleWin));
 
-    // 0.5 Bảng điều khiển — Chiều cao 460px tính toán chính xác từ CSS (không resize động)
-    // title(42) + 4×widget(224) + 3×gap(24) + settings(42) + footer(56) + padding+border(36) + dự phòng(36) = 460
+    // 0.5 B?ng di?u khi?n ? Chi?u cao 460px t?nh to?n ch?nh x?c t? CSS (kh?ng resize d?ng)
+    // title(42) + 4?widget(224) + 3?gap(24) + settings(42) + footer(56) + padding+border(36) + d? ph?ng(36) = 460
     const LAUNCHER_H = 460;
     launcherWin = new BrowserWindow({
-        width: 260, height: LAUNCHER_H,
-        x: width - 260, y: Math.floor(height / 2) - Math.floor(LAUNCHER_H / 2),
+        width: 261, height: LAUNCHER_H,
+        x: width - 261, y: Math.floor(height / 2) - Math.floor(LAUNCHER_H / 2),
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
-        show: true, opacity: 0, // Giải pháp tối thượng: Render sẵn nhưng Không hiển thị độ sáng!
+        show: true, opacity: 0, // Gi?i ph?p t?i thu?ng: Render s?n nhung Kh?ng hi?n th? d? s?ng!
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
     launcherWin.loadFile('launcher.html');
-    launcherWin.setIgnoreMouseEvents(true); // Khoá Tương tác chuột khi đang Tàng hình
+    launcherWin.setIgnoreMouseEvents(true); // Kho? Tuong t?c chu?t khi dang T?ng h?nh
     launcherWin.setAlwaysOnTop(true, 'screen-saver');
 
     function openSidebar() {
-        launcherWin.setOpacity(1); // Triệu hồi bằng GPU cực mượt
+        launcherWin.setOpacity(1); // Tri?u h?i b?ng GPU c?c mu?t
         launcherWin.setIgnoreMouseEvents(false);
         launcherWin.focus();
 
@@ -164,7 +230,7 @@ function createWindows() {
     }
 
     function closeSidebar() {
-        // Rút thẻ
+        // R?t th?
         launcherWin.setOpacity(0);
         launcherWin.setIgnoreMouseEvents(true);
 
@@ -185,28 +251,46 @@ function createWindows() {
         saveState(mState);
         if (handleWin) {
             handleWin.webContents.send('set-style', styleName);
-            // Gắn chặt lề ngay khi nhấn đổi giao diện Bám Phải
+            const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+            let [curX, curY] = handleWin.getPosition();
+            
             if (styleName === 'edge') {
-                const { width } = screen.getPrimaryDisplay().workAreaSize;
-                const [curX, curY] = handleWin.getPosition();
-                handleWin.setPosition(width - 60, curY);
-                saveBounds('handle', handleWin);
+                handleWin.setSize(24, 60);
+                handleWin.setPosition(width - 24, curY);
+            } else {
+                handleWin.setSize(50, 50);
+                // ??m b?o kh?ng b? l?t ra ngo?i khi t? Edge (24px width) sang Bubble (50px width)
+                if (curX > width - 50) {
+                    handleWin.setPosition(width - 50, curY);
+                }
             }
+            saveBounds('handle', handleWin);
         }
     });
 
-    // Custom JS Dragging cho Tai thỏ (Logic chặn mép màn hình cổ điển)
-    ipcMain.on('handle-drag', (e, x, y) => {
+    // Custom JS Dragging cho Tai th? (Logic ch?n m?p m?n h?nh c? di?n)
+    let handleDragOffsetX = 0;
+    let handleDragOffsetY = 0;
+
+    ipcMain.on('handle-drag-start', () => {
+        if (!handleWin) return;
+        const cursor = screen.getCursorScreenPoint();
+        const [winX, winY] = handleWin.getPosition();
+        handleDragOffsetX = cursor.x - winX;
+        handleDragOffsetY = cursor.y - winY;
+    });
+
+    ipcMain.on('handle-drag', (e) => {
         if (!handleWin) return;
         const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-        
-        // Không cho vượt ra khỏi 4 mép hiển thị
-        let targetX = Math.max(0, Math.min(x, width - 60));
-        let targetY = Math.max(0, Math.min(y, height - 60));
+        const cursor = screen.getCursorScreenPoint();
 
-        // NẾU đang ở Chế độ Bám Cạnh -> Cố định trục X vào lề Pkải
+        // Kh?ng cho vu?t ra kh?i 4 m?p hi?n th?
+        const [winWidth, winHeight] = handleWin.getSize(); let targetX = Math.max(0, Math.min(cursor.x - handleDragOffsetX, width - winWidth));
+        let targetY = Math.max(0, Math.min(cursor.y - handleDragOffsetY, height - winHeight));
+        // N?U dang ? Ch? d? B?m C?nh -> C? d?nh tr?c X v?o l? Pk?i
         if (mState.handleStyle === 'edge') {
-            targetX = width - 60;
+            targetX = width - winWidth;
         }
 
         handleWin.setPosition(targetX, targetY);
@@ -216,7 +300,6 @@ function createWindows() {
         if (handleWin) saveBounds('handle', handleWin);
     });
 
-    // Nhận chiều cao thực tế từ ResizeObserver — an toàn vì dashboard là max-content
     ipcMain.on('resize-launcher', (e, h) => {
         if (!launcherWin) return;
         const [w] = launcherWin.getSize();
@@ -225,64 +308,103 @@ function createWindows() {
         launcherWin.setBounds({ width: w, height: h, x: launcherWin.getBounds().x, y: newY });
     });
 
-    // 1. Weather
-    const weatherBounds = getBounds('weather', 340, 490, width - 600, 100);
-    weatherWin = new BrowserWindow({
-        width: weatherBounds.width, height: weatherBounds.height,
-        x: weatherBounds.x, y: weatherBounds.y,
-        transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
-        show: true, opacity: mState.active.weather ? 1 : 0,
-        // Tắt Sandbox để Geolocation hoạt động ổn định hơn trên Windows
-        webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, sandbox: false }
+    // Resize Weather
+    ipcMain.on('resize-weather', (e, h) => {
+        if (!weatherWin) return;
+        const bounds = weatherWin.getBounds();
+        if (bounds.height !== h) {
+            weatherWin.setBounds({ width: bounds.width, height: h, x: bounds.x, y: bounds.y });
+        }
     });
-    weatherWin.loadFile('index.html');
-    weatherWin.on('moved', () => saveBounds('weather', weatherWin));
-    if (!mState.active.weather) weatherWin.setIgnoreMouseEvents(true); else weatherWin.setIgnoreMouseEvents(mState.pinned.weather, { forward: true });
 
-    // 2. Sổ Nhiệm Vụ (Ghi Chú Đặc Biệt được tháo xích Node Integration)
-    const defNoteX = weatherBounds.x ? weatherBounds.x - 280 : width - 900;
-    const noteBounds = getBounds('note', 260, 300, defNoteX, weatherBounds.y);
-    noteWin = new BrowserWindow({
-        width: noteBounds.width, height: noteBounds.height,
-        x: noteBounds.x, y: noteBounds.y,
-        transparent: true, frame: false, alwaysOnTop: true, resizable: true, skipTaskbar: true,
-        show: true, opacity: mState.active.note ? 1 : 0,
-        webPreferences: { nodeIntegration: true, contextIsolation: false }
+    // Helper: Trọng lực Nam Châm (Magnetic Snap)
+    function snapToOthers(currentWin) {
+        const SNAP_DIST = 20;
+        const bounds = currentWin.getBounds();
+        let snappedX = bounds.x;
+        let snappedY = bounds.y;
+        
+        BrowserWindow.getAllWindows().forEach(other => {
+            if (other === currentWin || !other.isVisible()) return;
+            const ob = other.getBounds();
+            
+            // Cạnh trái chạm Cạnh phải
+            if (Math.abs(bounds.x - (ob.x + ob.width)) < SNAP_DIST) snappedX = ob.x + ob.width - 12; // -12 để đè bóng đổ lên nhau
+            // Cạnh phải chạm Cạnh trái
+            if (Math.abs((bounds.x + bounds.width) - ob.x) < SNAP_DIST) snappedX = ob.x - bounds.width + 12;
+            
+            // Cạnh trên chạm Cạnh dưới
+            if (Math.abs(bounds.y - (ob.y + ob.height)) < SNAP_DIST) snappedY = ob.y + ob.height - 12;
+            // Cạnh dưới chạm Cạnh trên
+            if (Math.abs((bounds.y + bounds.height) - ob.y) < SNAP_DIST) snappedY = ob.y - bounds.height + 12;
+            
+            // Chiều dọc thẳng hàng (Gióng lề trái/phải)
+            if (Math.abs(bounds.x - ob.x) < SNAP_DIST) snappedX = ob.x;
+            if (Math.abs(bounds.y - ob.y) < SNAP_DIST) snappedY = ob.y;
+        });
+        
+        if (snappedX !== bounds.x || snappedY !== bounds.y) {
+            currentWin.setBounds({ width: bounds.width, height: bounds.height, x: snappedX, y: snappedY });
+        }
+    }
+
+    // Helper: T?o c?a s? widget ti?u chu?n
+    function createWidget(name, file, defaults, webPrefs, extra = {}) {
+        const b = getBounds(name, ...defaults);
+        const win = new BrowserWindow({
+            width: b.width, height: b.height, x: b.x, y: b.y,
+            transparent: true, frame: false, alwaysOnTop: true, resizable: !!extra.resizable, skipTaskbar: true,
+            show: true, opacity: mState.active[name] ? 1 : 0,
+            webPreferences: webPrefs,
+            ...extra
+        });
+        win.loadFile(file);
+        
+        let moveTimeout;
+        win.on('move', () => {
+            clearTimeout(moveTimeout);
+            moveTimeout = setTimeout(() => {
+                snapToOthers(win);
+                saveBounds(name, win);
+            }, 150); // Hít sau khi nhả chuột một chút để không giật lag
+        });
+
+        if (extra.resizable) win.on('resized', () => saveBounds(name, win));
+        
+        if (!mState.active[name]) win.setIgnoreMouseEvents(true); 
+        else win.setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
+        return win;
+    }
+
+    // 1. Weather (Width 327 ôm khít margin + shadow)
+    weatherWin = createWidget('weather', 'index.html', [327, 490, width - 600, 100], {
+        preload: path.join(__dirname, 'preload.js'),
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false
     });
-    noteWin.loadFile('note.html');
-    noteWin.on('moved', () => saveBounds('note', noteWin));
-    noteWin.on('resized', () => saveBounds('note', noteWin));
-    if (!mState.active.note) noteWin.setIgnoreMouseEvents(true); else noteWin.setIgnoreMouseEvents(mState.pinned.note, { forward: true });
 
-    // 3. Plant (Tamagotchi / Pomodoro Lofi)
-    const plantB = getBounds('plant', 260, 230, width - 350, 100);
-    plantWin = new BrowserWindow({
-        width: plantB.width, height: plantB.height, x: plantB.x, y: plantB.y,
-        transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
-        show: true, opacity: mState.active.plant ? 1 : 0,
-        webPreferences: { nodeIntegration: false, contextIsolation: true }
-    });
-    plantWin.loadFile('plant.html');
-    plantWin.on('moved', () => saveBounds('plant', plantWin));
-    if (!mState.active.plant) plantWin.setIgnoreMouseEvents(true); else plantWin.setIgnoreMouseEvents(mState.pinned.plant, { forward: true });
+    // 2. Sổ Nhiệm Vụ (Chiều rộng bù margin 11px)
+    const defNoteX = width - 900;
+    noteWin = createWidget('note', 'note.html', [271, 300, defNoteX, weatherWin.getBounds().y], 
+        { nodeIntegration: true, contextIsolation: false }, { resizable: false });
 
-    // 4. Pet (Thú Cưng RPG)
-    const petB = getBounds('pet', 330, 390, width - 600, 300);
-    petWin = new BrowserWindow({
-        width: 330, height: 390, x: petB.x, y: petB.y, // Khóa chặt width height
-        transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
-        show: true, opacity: mState.active.pet ? 1 : 0,
-        webPreferences: { nodeIntegration: true, contextIsolation: false }
-    });
-    // Trực tiếp ép size lại trên hệ điều hành phòng ngừa user kẹt cache
-    petWin.setSize(330, 390);
-    petWin.loadFile('pet.html');
-    petWin.on('moved', () => saveBounds('pet', petWin));
-    if (!mState.active.pet) petWin.setIgnoreMouseEvents(true); else petWin.setIgnoreMouseEvents(mState.pinned.pet, { forward: true });
+    // 3. Plant (Tamagotchi / Pomodoro Lofi) (Chiều rộng + chiều cao bù 11px margin tàng hình)
+    plantWin = createWidget('plant', 'plant.html', [271, 241, width - 350, 100], 
+        { nodeIntegration: true, contextIsolation: false });
 
+    // 4. Pet (Thú Cưng RPG) (Chiều rộng + chiều cao bù 11px margin tàng hình)
+    petWin = createWidget('pet', 'pet.html', [341, 401, width - 600, 300], 
+        { nodeIntegration: true, contextIsolation: false }, { resizable: false });
+    petWin.setSize(341, 401); // Hard fix for pet size
 }
 
 // GUI Comm Channels
+ipcMain.on('weather-update', (e, data) => {
+    if (petWin) petWin.webContents.send('weather-impact', data);
+    if (plantWin) plantWin.webContents.send('weather-impact', data);
+});
+
 ipcMain.on('rpg-state-update', (e, state) => {
     BrowserWindow.getAllWindows().forEach(w => {
         if (w.webContents !== e.sender) {
@@ -323,33 +445,51 @@ ipcMain.on('pin-widget', (event, name, isPinned) => {
     if (wMap[name]) wMap[name].setIgnoreMouseEvents(isPinned, { forward: true });
 });
 
-app.whenReady().then(() => {
-    // Kiểm tra và thông báo cập nhật ngay khi mở
-    autoUpdater.checkForUpdatesAndNotify();
+const gotTheLock = app.requestSingleInstanceLock();
 
-    // UƯ TIÊN SỐ 1: Phóng ra giao diện nhanh ngay lập tức!
+if (!gotTheLock) {
+    app.quit();
+}
+
+app.on('second-instance', (event, commandLine, workingDirectory) => {
+    if (launcherWin) {
+        launcherWin.setOpacity(1);
+        launcherWin.setIgnoreMouseEvents(false);
+        launcherWin.focus();
+    }
+});
+
+app.whenReady().then(() => {
+    // Ki?m tra v? th?ng b?o c?p nh?t ngay khi m?
+    setTimeout(() => { autoUpdater.checkForUpdatesAndNotify(); }, 4000);
+
+    // UU TI?N S? 1: Ph?ng ra giao di?n nhanh ngay l?p t?c!
     createWindows();
 
     tray = new Tray(path.join(__dirname, 'Bunny_Sunny.png')); 
-    tray.setToolTip('Hệ Sinh Thái Pixel by Nashallery');
+    tray.setToolTip('H? Sinh Th?i Pixel by Nashallery');
     updateTrayMenu();
 
-    // UƯ TIÊN SỐ 2: Khi Giao diện Graphic đã kết xuất xong xuôi, bắt đầu chọc Cloud lấy dữ liệu
-    // Trì hoãn kéo dài thành Gần 3 giây (2500ms) để Hệ điều hành dập xong Khung Cửa Số, Tuyệt đối mượt mà
+    // UU TI?N S? 2: Khi Giao di?n Graphic d? k?t xu?t xong xu?i, b?t d?u ch?c Cloud l?y d? li?u
+    // Tr? ho?n k?o d?i th?nh G?n 3 gi?y (2500ms) d? H? di?u h?nh d?p xong Khung C?a S?, Tuy?t d?i mu?t m?
     setTimeout(() => {
         googleService.authenticate().then(() => {
-            console.log("==> GOOGLE BÙA CHÚ ĐÃ HOÀN TẤT KẾT NỐI!");
+            console.log("==> GOOGLE B?A CH? ?? HO?N T?T K?T N?I!");
             if (noteWin) noteWin.webContents.send('google-ready');
-        }).catch(err => console.log("Google Auth hỏng:", err));
+        }).catch(err => console.log("Google Auth h?ng:", err));
     }, 2500);
 
-    // =============== Google IPC Cầu Nối API ===============
+    // =============== Google IPC C?u N?i API ===============
     ipcMain.handle('g-get-tasks', async () => await googleService.getTasks());
     ipcMain.handle('g-add-task', async (e, title) => await googleService.addTask(title));
     ipcMain.handle('g-complete-task', async (e, id) => await googleService.completeTask(id));
     ipcMain.handle('g-remove-task', async (e, id) => await googleService.removeTask(id));
     
-    // API Định vị IP (Node.js Fetch Bypass CORS)
+    // Đám mây
+    ipcMain.handle('g-backup-rpg', async (e, data) => await googleService.backupRPG(data));
+    ipcMain.handle('g-restore-rpg', async () => await googleService.restoreRPG());
+    
+    // API ??nh v? IP (Node.js Fetch Bypass CORS)
     ipcMain.handle('get-ip-location', async () => {
         console.log('[Main] Getting IP Location via Electron Net...');
         try {
@@ -386,8 +526,8 @@ app.whenReady().then(() => {
         callback(prop === 'geolocation');
     });
 
-    // Bẻ khoá (Bypass) giới hạn nhúng của YouTube (Lỗi 153 / Lỗi hiển thị video)
-    // Giả mạo Header báo cáo Origin là chính trang Youtube để qua mặt hệ thống kiểm duyệt!
+    // B? kho? (Bypass) gi?i h?n nh?ng c?a YouTube (L?i 153 / L?i hi?n th? video)
+    // Gi? m?o Header b?o c?o Origin l? ch?nh trang Youtube d? qua m?t h? th?ng ki?m duy?t!
     session.defaultSession.webRequest.onBeforeSendHeaders(
         { urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*'] },
         (details, callback) => {
@@ -397,10 +537,19 @@ app.whenReady().then(() => {
         }
     );
 
-    // Khởi tạo thành công!
+    // Kh?i t?o th?nh c?ng!
 });
 
 app.on('before-quit', () => isQuiting = true);
+
+// Lazy Event Listeners (Bảo lưu RAM)
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin' && isQuiting) {
+        app.quit();
+    }
+});
+
+app.on('activate', () => {
+    // macOS: Tạo lại Windows nếu click vào Dock icon
+    if (BrowserWindow.getAllWindows().length === 0) createWindows();
 });

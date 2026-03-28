@@ -139,4 +139,53 @@ async function removeTask(taskId) {
     } catch(e) { return false; }
 }
 
-module.exports = { authenticate, getTasks, addTask, completeTask, removeTask };
+// ================= HỆ THỐNG ĐỒNG BỘ ĐÁM MÂY (RPG CLOUD SAVE) =================
+// Lưu lợi dụng Notes của một Google Task ẩn tên: [RPG_CLOUD_SAVE]
+async function findCloudSaveTask() {
+    initGoogle();
+    const res = await tasksService.tasks.list({
+        tasklist: '@default',
+        showHidden: true,
+        maxResults: 100
+    });
+    return (res.data.items || []).find(t => t.title === '[RPG_CLOUD_SAVE_DO_NOT_DELETE]');
+}
+
+async function backupRPG(dataJson) {
+    try {
+        const existing = await findCloudSaveTask();
+        if (existing) {
+            await tasksService.tasks.update({
+                tasklist: '@default',
+                task: existing.id,
+                requestBody: {
+                    id: existing.id,
+                    title: '[RPG_CLOUD_SAVE_DO_NOT_DELETE]',
+                    notes: dataJson
+                }
+            });
+        } else {
+            await tasksService.tasks.insert({
+                tasklist: '@default',
+                requestBody: {
+                    title: '[RPG_CLOUD_SAVE_DO_NOT_DELETE]',
+                    notes: dataJson
+                }
+            });
+        }
+        return true;
+    } catch (e) { console.error('Lỗi backup mây:', e); return false; }
+}
+
+async function restoreRPG() {
+    try {
+        const existing = await findCloudSaveTask();
+        if (existing && existing.notes) {
+            return existing.notes;
+        }
+    } catch(e) { console.error('Lỗi lấy backup mây:', e); }
+    return null;
+}
+// ==============================================================================
+
+module.exports = { authenticate, getTasks, addTask, completeTask, removeTask, backupRPG, restoreRPG };

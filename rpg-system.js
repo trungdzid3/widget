@@ -54,6 +54,24 @@ const RPG = {
             } else {
                 this.save(); // Save defaults if new
             }
+            // Thử kéo Cloud Save xuống nếu Local trống (Lần đầu mở trên máy mới)
+            if (!saved && typeof window !== 'undefined' && window.require) {
+                window.require('electron').ipcRenderer.invoke('g-restore-rpg').then(cloudDataJson => {
+                    if (cloudDataJson) {
+                        try {
+                            const cloud = JSON.parse(cloudDataJson);
+                            if (cloud.rpg) {
+                                this.state = cloud.rpg;
+                                localStorage.setItem('rpg_player_v2', JSON.stringify(cloud.rpg));
+                                if (cloud.pet) localStorage.setItem('rpg_pet', JSON.stringify(cloud.pet));
+                                this.save();
+                                console.log('Đã nạp thành công Cloud Save về máy mới!');
+                                setTimeout(() => window.location.reload(), 1000);
+                            }
+                        } catch(e){}
+                    }
+                });
+            }
         } catch (e) { console.error("RPG Load Error:", e); }
     },
 
@@ -66,6 +84,22 @@ const RPG = {
         if (typeof window !== 'undefined' && window.require) {
             window.require('electron').ipcRenderer.send('rpg-state-update', this.state);
         }
+        this.debouncedCloudSync();
+    },
+
+    debouncedCloudSync() {
+        if (this._syncTimer) clearTimeout(this._syncTimer);
+        this._syncTimer = setTimeout(() => {
+            if (typeof window !== 'undefined' && window.require) {
+                const { ipcRenderer } = window.require('electron');
+                const fullSave = {
+                    rpg: this.state,
+                    pet: JSON.parse(localStorage.getItem('rpg_pet') || '{}')
+                };
+                ipcRenderer.invoke('g-backup-rpg', JSON.stringify(fullSave))
+                    .then(success => { if(success) console.log('Đã backup RPG Save lên Cloud mây!'); });
+            }
+        }, 5000); // 5s sau khi không còn sự kiện save nào thì đẩy lên cloud
     },
 
     // Core Logic: Add XP & Coins
