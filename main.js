@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net } = require('electron');
+const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut } = require('electron');
 
 // Gi?m t?i l?i ngh?n Cache dia khi t?o 6 c?a s? d? h?a thu? tinh (transparent) c?ng l?c
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -54,7 +54,8 @@ autoUpdater.on('update-available', () => {
 });
 
 autoUpdater.on('error', (err) => {
-    console.error('L?i trong qu? tr?nh c?p nh?t:', err);
+    console.error('Lỗi trong quá trình cập nhật:', err);
+    require('electron').dialog.showErrorBox('Lỗi Cập Nhật (Debug)', `Chi tiết lỗi:\n\n${err == null ? "Không xác định" : (err.stack || err).toString()}`);
 });
 
 autoUpdater.on('update-downloaded', (info) => {
@@ -64,17 +65,17 @@ autoUpdater.on('update-downloaded', (info) => {
     // Hi?n th? h?p tho?i y?u c?u ngu?i d?ng x?c nh?n
     dialog.showMessageBox({
         type: 'info',
-        title: 'C?p nh?t s?n s?ng',
-        message: `Phi?n b?n m?i ${info.version} d? du?c t?i v? th?nh c?ng!`,
-        detail: '?ng d?ng c?n kh?i d?ng l?i d? ?p d?ng c?c thay d?i m?i nh?t. B?n c? mu?n th?c hi?n ngay kh?ng?',
-        buttons: ['Kh?i d?ng l?i ngay', '?? sau'],
+        title: 'Cập nhật sẵn sàng',
+        message: `Phiên bản mới ${info.version} đã được tải về thành công!`,
+        detail: 'Ứng dụng cần khởi động lại để áp dụng các thay đổi mới nhất. Bạn có muốn thực hiện ngay không?',
+        buttons: ['Khởi động lại ngay', 'Để sau'],
         defaultId: 0,
         cancelId: 1
     }).then((result) => {
         if (result.response === 0) {
             setImmediate(() => {
                 app.removeAllListeners('window-all-closed'); // Ngan ch?n s? ki?n d?ng c?a s? m?c d?nh
-                autoUpdater.quitAndInstall(false, true); // true = silent install (n?u c? th?), false = force run app after
+                autoUpdater.quitAndInstall(true, true); // true = chớp mắt cài ngầm như Launcher Game (Silent Patch)
             });
         }
     });
@@ -153,29 +154,56 @@ if(!mState.pinned) mState.pinned = { weather: false, note: false, plant: false, 
 if(mState.pinned.pet === undefined) mState.pinned.pet = false;
 if(!mState.handleStyle || mState.handleStyle === 'bubble') mState.handleStyle = 'edge';
 let isQuiting = false;
+let lastActiveState = null;
 
 function updateTrayMenu() {
     const contextMenu = Menu.buildFromTemplate([
         { label: 'Thanh Công Cụ Thông Minh (Smart Sidebar)', enabled: false },
         { type: 'separator' },
-        { label: '👁️ Hiện tất cả Widget', click: () => toggleAll(true) },
-        { label: '🙈 Ẩn tất cả Widget', click: () => toggleAll(false) },
+        { label: '👁️ Mở lại Widget vừa ẩn (Ctrl+Shift+D)', click: () => toggleSmartVisibility(true) },
+        { label: '🙈 Ẩn Widget đang mở (Ctrl+Shift+D)', click: () => toggleSmartVisibility(false) },
         { type: 'separator' },
         { label: '❌ Thoát Hệ Sinh Thái (Quit)', click: () => { isQuiting = true; app.quit(); } }
     ]);
     if (tray) tray.setContextMenu(contextMenu);
 }
 
-function toggleAll(show) {
+function toggleSmartVisibility(forceShow = null) {
     const wins = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
-    for (let key in wins) {
-        mState.active[key] = show;
-        if (wins[key]) {
-            wins[key].setOpacity(show ? 1 : 0);
-            if (show) wins[key].setIgnoreMouseEvents(mState.pinned[key] || false, { forward: true });
-            else wins[key].setIgnoreMouseEvents(true);
+    
+    // Nếu forceShow = null (từ phím tắt), sẽ Đóng nếu đang có widget mở, và Mở nếu mọi thứ đang ẩn
+    let isCurrentlyShowingAny = Object.values(mState.active).some(v => v === true);
+    let shouldShow = forceShow !== null ? forceShow : !isCurrentlyShowingAny;
+
+    if (!shouldShow) {
+        // Đang ra lệnh Ẩn -> Lưu lại ngay trạng thái để lần sau phục hồi
+        lastActiveState = JSON.parse(JSON.stringify(mState.active));
+        for (let key in mState.active) mState.active[key] = false;
+    } else {
+        // Đang ra lệnh Hiện -> Lấy lại trạng thái đã lưu
+        if (lastActiveState) {
+            mState.active = JSON.parse(JSON.stringify(lastActiveState));
+        } else {
+            // Không có lịch sử thì mặc định bật lại cái thời tiết làm gốc
+            mState.active['weather'] = true;
         }
     }
+
+    // Áp dụng độ mờ và tương tác chuột vào danh sách cửa sổ
+    for (let key in wins) {
+        let isShow = mState.active[key];
+        if (wins[key]) {
+            if (isShow) {
+                if (wins[key].isMinimized()) wins[key].restore();
+                wins[key].setOpacity(1);
+                wins[key].setIgnoreMouseEvents(mState.pinned[key] || false, { forward: true });
+            } else {
+                wins[key].setOpacity(0);
+                wins[key].setIgnoreMouseEvents(true);
+            }
+        }
+    }
+    
     saveState(mState);
     if (launcherWin) launcherWin.webContents.send('sync-launcher-ui', mState);
 }
@@ -370,8 +398,21 @@ function createWindows() {
         });
 
         if (extra.resizable) win.on('resized', () => saveBounds(name, win));
-        
-        if (!mState.active[name]) win.setIgnoreMouseEvents(true); 
+
+        win.on('close', (e) => {
+            if (!isQuiting) {
+                e.preventDefault();
+                mState.active[name] = false;
+                saveState(mState);
+                win.setOpacity(0);
+                win.setIgnoreMouseEvents(true);
+                if (launcherWin && !launcherWin.isDestroyed()) {
+                    launcherWin.webContents.send('sync-launcher-ui', mState);
+                }
+            }
+        });
+
+        if (!mState.active[name]) win.setIgnoreMouseEvents(true);
         else win.setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         return win;
     }
@@ -401,13 +442,13 @@ function createWindows() {
 
 // GUI Comm Channels
 ipcMain.on('weather-update', (e, data) => {
-    if (petWin) petWin.webContents.send('weather-impact', data);
-    if (plantWin) plantWin.webContents.send('weather-impact', data);
+    if (petWin && !petWin.isDestroyed() && petWin.webContents) petWin.webContents.send('weather-impact', data);
+    if (plantWin && !plantWin.isDestroyed() && plantWin.webContents) plantWin.webContents.send('weather-impact', data);
 });
 
 ipcMain.on('rpg-state-update', (e, state) => {
     BrowserWindow.getAllWindows().forEach(w => {
-        if (w.webContents !== e.sender) {
+        if (!w.isDestroyed() && w.webContents && !w.webContents.isDestroyed() && w.webContents !== e.sender) {
             w.webContents.send('rpg-state-sync', state);
         }
     });
@@ -427,8 +468,9 @@ ipcMain.on('toggle-widget', (event, name, isVisible) => {
     mState.active[name] = isVisible;
     saveState(mState);
     const wMap = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
-    if (wMap[name]) {
+    if (wMap[name] && !wMap[name].isDestroyed()) {
         if (isVisible) {
+            if (wMap[name].isMinimized()) wMap[name].restore();
             wMap[name].setOpacity(1);
             wMap[name].setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         } else {
@@ -442,7 +484,7 @@ ipcMain.on('pin-widget', (event, name, isPinned) => {
     mState.pinned[name] = isPinned;
     saveState(mState);
     const wMap = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
-    if (wMap[name]) wMap[name].setIgnoreMouseEvents(isPinned, { forward: true });
+    if (wMap[name] && !wMap[name].isDestroyed()) wMap[name].setIgnoreMouseEvents(isPinned, { forward: true });
 });
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -460,8 +502,13 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
 });
 
 app.whenReady().then(() => {
+    // Đăng ký Phím tắt Toàn Cầu để Ẩn / Mở lại thông minh (Ctrl+Shift+D)
+    globalShortcut.register('CommandOrControl+Shift+D', () => {
+        toggleSmartVisibility(null);
+    });
+
     // Ki?m tra v? th?ng b?o c?p nh?t ngay khi m?
-    setTimeout(() => { autoUpdater.checkForUpdatesAndNotify(); }, 4000);
+    setTimeout(() => { autoUpdater.checkForUpdates(); }, 4000);
 
     // UU TI?N S? 1: Ph?ng ra giao di?n nhanh ngay l?p t?c!
     createWindows();
@@ -541,6 +588,7 @@ app.whenReady().then(() => {
 });
 
 app.on('before-quit', () => isQuiting = true);
+app.on('will-quit', () => globalShortcut.unregisterAll());
 
 // Lazy Event Listeners (Bảo lưu RAM)
 app.on('window-all-closed', () => {
