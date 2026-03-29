@@ -1,22 +1,26 @@
-const path = require('path');
+﻿const path = require('path');
 const fs = require('fs');
 const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut } = require('electron');
 
 // Gi?m t?i l?i ngh?n Cache dia khi t?o 6 c?a s? d? h?a thu? tinh (transparent) c?ng l?c
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-http-cache');
-// Bật định vị gốc của Windows 10/11 (không bị phụ thuộc Google Maps API Key gây lỗi GPS)
+// Báº­t Ä‘á»‹nh vá»‹ gá»‘c cá»§a Windows 10/11 (khÃ´ng bá»‹ phá»¥ thuá»™c Google Maps API Key gÃ¢y lá»—i GPS)
 app.commandLine.appendSwitch('enable-features', 'WinrtGeolocationImplementation');
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService,AudioServiceOutOfProcess');
+app.commandLine.appendSwitch('disable-dev-shm-usage');
+app.commandLine.appendSwitch('no-sandbox');
 
-// --- TỐI ƯU HIỆU NĂNG (Bảo Toàn Khung Kính Trong Suốt) ---
-// Tăng tốc độ render và giảm tiêu thụ GPU/CPU (Không dùng app.disableHardwareAcceleration() vì sẽ làm mất transparent)
+// --- Tá»I Æ¯U HIá»†U NÄ‚NG (Báº£o ToÃ n Khung KÃ­nh Trong Suá»‘t) ---
+// TÄƒng tá»‘c Ä‘á»™ render vÃ  giáº£m tiÃªu thá»¥ GPU/CPU (KhÃ´ng dÃ¹ng app.disableHardwareAcceleration() vÃ¬ sáº½ lÃ m máº¥t transparent)
 app.commandLine.appendSwitch('enable-gpu-rasterization'); 
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('disable-software-rasterizer'); 
 app.commandLine.appendSwitch('enable-hardware-overlays');
-// Giới hạn bộ nhớ V8 Garbage Collector để tránh Leak RAM khi treo Background quá lâu
+// Giá»›i háº¡n bá»™ nhá»› V8 Garbage Collector Ä‘á»ƒ trÃ¡nh Leak RAM khi treo Background quÃ¡ lÃ¢u
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
-// Tắt tính năng hạn chế Timer nền (Giúp cho việc đếm ngược / cập nhật thời tiết không bị đứng khi cửa sổ bị khuất)
+// Táº¯t tÃ­nh nÄƒng háº¡n cháº¿ Timer ná»n (GiÃºp cho viá»‡c Ä‘áº¿m ngÆ°á»£c / cáº­p nháº­t thá»i tiáº¿t khÃ´ng bá»‹ Ä‘á»©ng khi cá»­a sá»• bá»‹ khuáº¥t)
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 
 const { autoUpdater } = require('electron-updater');
@@ -54,8 +58,8 @@ autoUpdater.on('update-available', () => {
 });
 
 autoUpdater.on('error', (err) => {
-    console.error('Lỗi trong quá trình cập nhật:', err);
-    require('electron').dialog.showErrorBox('Lỗi Cập Nhật (Debug)', `Chi tiết lỗi:\n\n${err == null ? "Không xác định" : (err.stack || err).toString()}`);
+    console.error('Lá»—i trong quÃ¡ trÃ¬nh cáº­p nháº­t:', err);
+    require('electron').dialog.showErrorBox('Lá»—i Cáº­p Nháº­t (Debug)', `Chi tiáº¿t lá»—i:\n\n${err == null ? "KhÃ´ng xÃ¡c Ä‘á»‹nh" : (err.stack || err).toString()}`);
 });
 
 autoUpdater.on('update-downloaded', (info) => {
@@ -65,17 +69,17 @@ autoUpdater.on('update-downloaded', (info) => {
     // Hi?n th? h?p tho?i y?u c?u ngu?i d?ng x?c nh?n
     dialog.showMessageBox({
         type: 'info',
-        title: 'Cập nhật sẵn sàng',
-        message: `Phiên bản mới ${info.version} đã được tải về thành công!`,
-        detail: 'Ứng dụng cần khởi động lại để áp dụng các thay đổi mới nhất. Bạn có muốn thực hiện ngay không?',
-        buttons: ['Khởi động lại ngay', 'Để sau'],
+        title: 'Cáº­p nháº­t sáºµn sÃ ng',
+        message: `PhiÃªn báº£n má»›i ${info.version} Ä‘Ã£ Ä‘Æ°á»£c táº£i vá» thÃ nh cÃ´ng!`,
+        detail: 'á»¨ng dá»¥ng cáº§n khá»Ÿi Ä‘á»™ng láº¡i Ä‘á»ƒ Ã¡p dá»¥ng cÃ¡c thay Ä‘á»•i má»›i nháº¥t. Báº¡n cÃ³ muá»‘n thá»±c hiá»‡n ngay khÃ´ng?',
+        buttons: ['Khá»Ÿi Ä‘á»™ng láº¡i ngay', 'Äá»ƒ sau'],
         defaultId: 0,
         cancelId: 1
     }).then((result) => {
         if (result.response === 0) {
             setImmediate(() => {
                 app.removeAllListeners('window-all-closed'); // Ngan ch?n s? ki?n d?ng c?a s? m?c d?nh
-                autoUpdater.quitAndInstall(true, true); // true = chớp mắt cài ngầm như Launcher Game (Silent Patch)
+                autoUpdater.quitAndInstall(true, true); // true = chá»›p máº¯t cÃ i ngáº§m nhÆ° Launcher Game (Silent Patch)
             });
         }
     });
@@ -94,7 +98,7 @@ function getBounds(name, defaultWidth, defaultHeight, defaultX, defaultY) {
             if (typeof parsed.x === 'number') {
                 bounds.x = parsed.x;
                 bounds.y = parsed.y;
-                // Cố định Width/Height từ thông số hệ thống, KHÔNG lấy từ bộ nhớ đệm cũ (để chống lỗi dư khoảng trống)
+                // Cá»‘ Ä‘á»‹nh Width/Height tá»« thÃ´ng sá»‘ há»‡ thá»‘ng, KHÃ”NG láº¥y tá»« bá»™ nhá»› Ä‘á»‡m cÅ© (Ä‘á»ƒ chá»‘ng lá»—i dÆ° khoáº£ng trá»‘ng)
             }
         }
     } catch(e) {}
@@ -137,7 +141,7 @@ function getState() {
     return { 
         active: { weather: false, note: false, plant: false, pet: false },
         pinned: { weather: false, note: false, plant: false, pet: false },
-        handleStyle: 'bubble'
+        handleStyle: 'edge'
     };
 }
 function saveState(s) {
@@ -165,40 +169,42 @@ function updateTrayMenu() {
         { type: 'separator' },
         { label: '❌ Thoát Hệ Sinh Thái (Quit)', click: () => { isQuiting = true; app.quit(); } }
     ]);
-    if (tray) tray.setContextMenu(contextMenu);
+    if (tray) { tray.contextMenu = contextMenu; }
 }
 
 function toggleSmartVisibility(forceShow = null) {
     const wins = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
     
-    // Nếu forceShow = null (từ phím tắt), sẽ Đóng nếu đang có widget mở, và Mở nếu mọi thứ đang ẩn
+    // Náº¿u forceShow = null (tá»« phÃ­m táº¯t), sáº½ ÄÃ³ng náº¿u Ä‘ang cÃ³ widget má»Ÿ, vÃ  Má»Ÿ náº¿u má»i thá»© Ä‘ang áº©n
     let isCurrentlyShowingAny = Object.values(mState.active).some(v => v === true);
     let shouldShow = forceShow !== null ? forceShow : !isCurrentlyShowingAny;
 
     if (!shouldShow) {
-        // Đang ra lệnh Ẩn -> Lưu lại ngay trạng thái để lần sau phục hồi
+        // Äang ra lá»‡nh áº¨n -> LÆ°u láº¡i ngay tráº¡ng thÃ¡i Ä‘á»ƒ láº§n sau phá»¥c há»“i
         lastActiveState = JSON.parse(JSON.stringify(mState.active));
         for (let key in mState.active) mState.active[key] = false;
     } else {
-        // Đang ra lệnh Hiện -> Lấy lại trạng thái đã lưu
+        // Äang ra lá»‡nh Hiá»‡n -> Láº¥y láº¡i tráº¡ng thÃ¡i Ä‘Ã£ lÆ°u
         if (lastActiveState) {
             mState.active = JSON.parse(JSON.stringify(lastActiveState));
         } else {
-            // Không có lịch sử thì mặc định bật lại cái thời tiết làm gốc
+            // KhÃ´ng cÃ³ lá»‹ch sá»­ thÃ¬ máº·c Ä‘á»‹nh báº­t láº¡i cÃ¡i thá»i tiáº¿t lÃ m gá»‘c
             mState.active['weather'] = true;
         }
     }
 
-    // Áp dụng độ mờ và tương tác chuột vào danh sách cửa sổ
+    // Ãp dá»¥ng Ä‘á»™ má» vÃ  tÆ°Æ¡ng tÃ¡c chuá»™t vÃ o danh sÃ¡ch cá»­a sá»•
     for (let key in wins) {
         let isShow = mState.active[key];
         if (wins[key]) {
             if (isShow) {
                 if (wins[key].isMinimized()) wins[key].restore();
                 wins[key].setOpacity(1);
+                try { wins[key].webContents.setFrameRate(60); wins[key].webContents.backgroundThrottling = false; } catch(e){}
                 wins[key].setIgnoreMouseEvents(mState.pinned[key] || false, { forward: true });
             } else {
                 wins[key].setOpacity(0);
+                try { wins[key].webContents.setFrameRate(1); wins[key].webContents.backgroundThrottling = true; } catch(e){}
                 wins[key].setIgnoreMouseEvents(true);
             }
         }
@@ -212,15 +218,10 @@ function createWindows() {
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
     // 0. Tai Th?
-    const isEdge = mState.handleStyle === 'edge';
-    const hw = isEdge ? 24 : 50;
-    const hh = isEdge ? 60 : 50;
-
-    const handleBounds = getBounds('handle', hw, hh, width - hw, Math.floor(height / 2) - Math.floor(hh/2));
-    
-    // ?p v? tr? khi dang ? B?m L? Ph?i (d? ph?ng tru?c d? luu to? d? b?ng n?i r?i d?i state)
-    let initX = handleBounds.x;
-    if (isEdge) initX = width - hw;
+    const hw = 24;
+      const hh = 60;
+      const handleBounds = getBounds('handle', hw, hh, width - hw, Math.floor(height / 2) - Math.floor(hh/2));
+      let initX = width - hw;
 
     handleWin = new BrowserWindow({
         width: hw, height: hh,
@@ -272,30 +273,6 @@ function createWindows() {
     ipcMain.on('close-sidebar', closeSidebar);
     launcherWin.on('blur', closeSidebar);
     
-    ipcMain.handle('get-handle-style', () => mState.handleStyle);
-
-    ipcMain.on('change-handle-style', (e, styleName) => {
-        mState.handleStyle = styleName;
-        saveState(mState);
-        if (handleWin) {
-            handleWin.webContents.send('set-style', styleName);
-            const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-            let [curX, curY] = handleWin.getPosition();
-            
-            if (styleName === 'edge') {
-                handleWin.setSize(24, 60);
-                handleWin.setPosition(width - 24, curY);
-            } else {
-                handleWin.setSize(50, 50);
-                // ??m b?o kh?ng b? l?t ra ngo?i khi t? Edge (24px width) sang Bubble (50px width)
-                if (curX > width - 50) {
-                    handleWin.setPosition(width - 50, curY);
-                }
-            }
-            saveBounds('handle', handleWin);
-        }
-    });
-
     // Custom JS Dragging cho Tai th? (Logic ch?n m?p m?n h?nh c? di?n)
     let handleDragOffsetX = 0;
     let handleDragOffsetY = 0;
@@ -317,9 +294,7 @@ function createWindows() {
         const [winWidth, winHeight] = handleWin.getSize(); let targetX = Math.max(0, Math.min(cursor.x - handleDragOffsetX, width - winWidth));
         let targetY = Math.max(0, Math.min(cursor.y - handleDragOffsetY, height - winHeight));
         // N?U dang ? Ch? d? B?m C?nh -> C? d?nh tr?c X v?o l? Pk?i
-        if (mState.handleStyle === 'edge') {
-            targetX = width - winWidth;
-        }
+        targetX = width - winWidth;
 
         handleWin.setPosition(targetX, targetY);
     });
@@ -345,7 +320,7 @@ function createWindows() {
         }
     });
 
-    // Helper: Trọng lực Nam Châm (Magnetic Snap)
+    // Helper: Trá»ng lá»±c Nam ChÃ¢m (Magnetic Snap)
     function snapToOthers(currentWin) {
         const SNAP_DIST = 20;
         const bounds = currentWin.getBounds();
@@ -356,17 +331,17 @@ function createWindows() {
             if (other === currentWin || !other.isVisible()) return;
             const ob = other.getBounds();
             
-            // Cạnh trái chạm Cạnh phải
-            if (Math.abs(bounds.x - (ob.x + ob.width)) < SNAP_DIST) snappedX = ob.x + ob.width - 12; // -12 để đè bóng đổ lên nhau
-            // Cạnh phải chạm Cạnh trái
+            // Cáº¡nh trÃ¡i cháº¡m Cáº¡nh pháº£i
+            if (Math.abs(bounds.x - (ob.x + ob.width)) < SNAP_DIST) snappedX = ob.x + ob.width - 12; // -12 Ä‘á»ƒ Ä‘Ã¨ bÃ³ng Ä‘á»• lÃªn nhau
+            // Cáº¡nh pháº£i cháº¡m Cáº¡nh trÃ¡i
             if (Math.abs((bounds.x + bounds.width) - ob.x) < SNAP_DIST) snappedX = ob.x - bounds.width + 12;
             
-            // Cạnh trên chạm Cạnh dưới
+            // Cáº¡nh trÃªn cháº¡m Cáº¡nh dÆ°á»›i
             if (Math.abs(bounds.y - (ob.y + ob.height)) < SNAP_DIST) snappedY = ob.y + ob.height - 12;
-            // Cạnh dưới chạm Cạnh trên
+            // Cáº¡nh dÆ°á»›i cháº¡m Cáº¡nh trÃªn
             if (Math.abs((bounds.y + bounds.height) - ob.y) < SNAP_DIST) snappedY = ob.y - bounds.height + 12;
             
-            // Chiều dọc thẳng hàng (Gióng lề trái/phải)
+            // Chiá»u dá»c tháº³ng hÃ ng (GiÃ³ng lá» trÃ¡i/pháº£i)
             if (Math.abs(bounds.x - ob.x) < SNAP_DIST) snappedX = ob.x;
             if (Math.abs(bounds.y - ob.y) < SNAP_DIST) snappedY = ob.y;
         });
@@ -394,17 +369,29 @@ function createWindows() {
             moveTimeout = setTimeout(() => {
                 snapToOthers(win);
                 saveBounds(name, win);
-            }, 150); // Hít sau khi nhả chuột một chút để không giật lag
+            }, 150); // HÃ­t sau khi nháº£ chuá»™t má»™t chÃºt Ä‘á»ƒ khÃ´ng giáº­t lag
         });
 
         if (extra.resizable) win.on('resized', () => saveBounds(name, win));
 
-        win.on('close', (e) => {
+        win.on('minimize', () => {
+                mState.active[name] = false;
+                saveState(mState);
+                win.setOpacity(0);
+                try { win.webContents.setFrameRate(1); win.webContents.backgroundThrottling = true; } catch(e){}
+                win.setIgnoreMouseEvents(true);
+                if (launcherWin && !launcherWin.isDestroyed()) {
+                    launcherWin.webContents.send('sync-launcher-ui', mState);
+                }
+          });
+
+          win.on('close', (e) => {
             if (!isQuiting) {
                 e.preventDefault();
                 mState.active[name] = false;
                 saveState(mState);
                 win.setOpacity(0);
+                try { win.webContents.setFrameRate(1); win.webContents.backgroundThrottling = true; } catch(e){}
                 win.setIgnoreMouseEvents(true);
                 if (launcherWin && !launcherWin.isDestroyed()) {
                     launcherWin.webContents.send('sync-launcher-ui', mState);
@@ -412,12 +399,15 @@ function createWindows() {
             }
         });
 
-        if (!mState.active[name]) win.setIgnoreMouseEvents(true);
+        if (!mState.active[name]) {
+        win.setIgnoreMouseEvents(true);
+        try{ win.webContents.setFrameRate(1); win.webContents.backgroundThrottling = true; } catch(e){}
+    }
         else win.setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         return win;
     }
 
-    // 1. Weather (Width 327 ôm khít margin + shadow)
+    // 1. Weather (Width 327 Ã´m khÃ­t margin + shadow)
     weatherWin = createWidget('weather', 'index.html', [327, 490, width - 600, 100], {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
@@ -425,16 +415,16 @@ function createWindows() {
         sandbox: false
     });
 
-    // 2. Sổ Nhiệm Vụ (Chiều rộng bù margin 11px)
+    // 2. Sá»• Nhiá»‡m Vá»¥ (Chiá»u rá»™ng bÃ¹ margin 11px)
     const defNoteX = width - 900;
     noteWin = createWidget('note', 'note.html', [271, 300, defNoteX, weatherWin.getBounds().y], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
 
-    // 3. Plant (Tamagotchi / Pomodoro Lofi) (Chiều rộng + chiều cao bù 11px margin tàng hình)
+    // 3. Plant (Tamagotchi / Pomodoro Lofi) (Chiá»u rá»™ng + chiá»u cao bÃ¹ 11px margin tÃ ng hÃ¬nh)
     plantWin = createWidget('plant', 'plant.html', [271, 241, width - 350, 100], 
         { nodeIntegration: true, contextIsolation: false });
 
-    // 4. Pet (Thú Cưng RPG) (Chiều rộng + chiều cao bù 11px margin tàng hình)
+    // 4. Pet (ThÃº CÆ°ng RPG) (Chiá»u rá»™ng + chiá»u cao bÃ¹ 11px margin tÃ ng hÃ¬nh)
     petWin = createWidget('pet', 'pet.html', [341, 401, width - 600, 300], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
     petWin.setSize(341, 401); // Hard fix for pet size
@@ -472,9 +462,11 @@ ipcMain.on('toggle-widget', (event, name, isVisible) => {
         if (isVisible) {
             if (wMap[name].isMinimized()) wMap[name].restore();
             wMap[name].setOpacity(1);
+            try { wMap[name].webContents.setFrameRate(60); wMap[name].webContents.backgroundThrottling = false; } catch(e){}
             wMap[name].setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         } else {
             wMap[name].setOpacity(0);
+            try { wMap[name].webContents.setFrameRate(1); wMap[name].webContents.backgroundThrottling = true; } catch(e){}
             wMap[name].setIgnoreMouseEvents(true);
         }
     }
@@ -502,7 +494,7 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
 });
 
 app.whenReady().then(() => {
-    // Đăng ký Phím tắt Toàn Cầu để Ẩn / Mở lại thông minh (Ctrl+Shift+D)
+    // ÄÄƒng kÃ½ PhÃ­m táº¯t ToÃ n Cáº§u Ä‘á»ƒ áº¨n / Má»Ÿ láº¡i thÃ´ng minh (Ctrl+Shift+D)
     globalShortcut.register('CommandOrControl+Shift+D', () => {
         toggleSmartVisibility(null);
     });
@@ -514,16 +506,40 @@ app.whenReady().then(() => {
     createWindows();
 
     tray = new Tray(path.join(__dirname, 'Bunny_Sunny.png')); 
-    tray.setToolTip('H? Sinh Th?i Pixel by Nashallery');
+    tray.setToolTip('Hệ Sinh Thái Pixel by Nashallery');
     updateTrayMenu();
 
-    // UU TI?N S? 2: Khi Giao di?n Graphic d? k?t xu?t xong xu?i, b?t d?u ch?c Cloud l?y d? li?u
+      tray.on('right-click', () => { if (tray.contextMenu) tray.popUpContextMenu(tray.contextMenu); });
+        tray.on('click', () => {
+            if (launcherWin) {
+                launcherWin.setOpacity(1);
+                launcherWin.setIgnoreMouseEvents(false);
+                launcherWin.focus();
+                if (handleWin) {
+                    handleWin.setOpacity(0);
+                    handleWin.setIgnoreMouseEvents(true);
+                }
+            }
+        });
+        tray.on('double-click', () => {
+          if (launcherWin) {
+              launcherWin.setOpacity(1);
+              launcherWin.setIgnoreMouseEvents(false);
+              launcherWin.focus();
+              if (handleWin) {
+                  handleWin.setOpacity(0);
+                  handleWin.setIgnoreMouseEvents(true);
+              }
+          }
+      });
+
+      // UU TI?N S? 2: Khi Giao di?n Graphic d? k?t xu?t xong xu?i, b?t d?u ch?c Cloud l?y d? li?u
     // Tr? ho?n k?o d?i th?nh G?n 3 gi?y (2500ms) d? H? di?u h?nh d?p xong Khung C?a S?, Tuy?t d?i mu?t m?
     setTimeout(() => {
         googleService.authenticate().then(() => {
-            console.log("==> GOOGLE B?A CH? ?? HO?N T?T K?T N?I!");
+            console.log("==> GOOGLE API HOÀN TẤT KẾT NỐI!");
             if (noteWin) noteWin.webContents.send('google-ready');
-        }).catch(err => console.log("Google Auth h?ng:", err));
+        }).catch(err => console.log("Hỏng Google Auth:", err));
     }, 2500);
 
     // =============== Google IPC C?u N?i API ===============
@@ -532,7 +548,7 @@ app.whenReady().then(() => {
     ipcMain.handle('g-complete-task', async (e, id) => await googleService.completeTask(id));
     ipcMain.handle('g-remove-task', async (e, id) => await googleService.removeTask(id));
     
-    // Đám mây
+    // ÄÃ¡m mÃ¢y
     ipcMain.handle('g-backup-rpg', async (e, data) => await googleService.backupRPG(data));
     ipcMain.handle('g-restore-rpg', async () => await googleService.restoreRPG());
     
@@ -590,7 +606,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => isQuiting = true);
 app.on('will-quit', () => globalShortcut.unregisterAll());
 
-// Lazy Event Listeners (Bảo lưu RAM)
+// Lazy Event Listeners (Báº£o lÆ°u RAM)
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin' && isQuiting) {
         app.quit();
@@ -598,6 +614,23 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-    // macOS: Tạo lại Windows nếu click vào Dock icon
+    // macOS: Táº¡o láº¡i Windows náº¿u click vÃ o Dock icon
     if (BrowserWindow.getAllWindows().length === 0) createWindows();
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron');
+﻿const { ipcRenderer } = require('electron');
 
 const taskListEl = document.getElementById('task-list');
 const inputEl = document.getElementById('new-task');
@@ -12,21 +12,21 @@ const expMaxEl = document.getElementById('exp-max');
 const coinEl = document.getElementById('player-coins'); // NEW
 const avatarEl = document.querySelector('.avatar');
 
-// Dữ liệu LocalStorage -> CHUYỂN QUA SỬ DỤNG RPG MODULE
-let tasks = []; // Load 100% từ Google Cloud API
+// Dá»¯ liá»‡u LocalStorage -> CHUYá»‚N QUA Sá»¬ Dá»¤NG RPG MODULE
+let tasks = []; // Load 100% tá»« Google Cloud API
 
 const CLASSES = [
-    { maxLv: 5, name: 'Tân Binh', avatar: '👶' },
-    { maxLv: 10, name: 'Dân Làng', avatar: '🧑‍🌾' },
-    { maxLv: 20, name: 'Kiếm Khách', avatar: '🤺' },
-    { maxLv: 35, name: 'Chiến Binh', avatar: '⚔️' },
-    { maxLv: 50, name: 'Dũng Sĩ', avatar: '🛡️' },
-    { maxLv: 80, name: 'Hiệp Sĩ', avatar: '🐎' },
-    { maxLv: 999, name: 'Đại Anh Hùng', avatar: '👑' }
+    { maxLv: 5, name: 'TÃ¢n Binh', avatar: 'ðŸ‘¶' },
+    { maxLv: 10, name: 'DÃ¢n LÃ ng', avatar: 'ðŸ§‘â€ðŸŒ¾' },
+    { maxLv: 20, name: 'Kiáº¿m KhÃ¡ch', avatar: 'ðŸ¤º' },
+    { maxLv: 35, name: 'Chiáº¿n Binh', avatar: 'âš”ï¸' },
+    { maxLv: 50, name: 'DÅ©ng SÄ©', avatar: 'ðŸ›¡ï¸' },
+    { maxLv: 80, name: 'Hiá»‡p SÄ©', avatar: 'ðŸŽ' },
+    { maxLv: 999, name: 'Äáº¡i Anh HÃ¹ng', avatar: 'ðŸ‘‘' }
 ];
 
 function updateStats() {
-    // Lấy dữ liệu từ RPG System thay vì tự tính
+    // Láº¥y dá»¯ liá»‡u tá»« RPG System thay vÃ¬ tá»± tÃ­nh
     const state = RPG.state;
     
     // Check Level Up visual effect
@@ -50,22 +50,22 @@ function updateStats() {
     expFillEl.style.width = `${RPG.getProgress()}%`;
 }
 
-// Hook vào RPG System khi có thay đổi từ nơi khác
+// Hook vÃ o RPG System khi cÃ³ thay Ä‘á»•i tá»« nÆ¡i khÃ¡c
 RPG.onStateChange = (newState) => {
     updateStats();
 };
 
 
-// ---------------- Lõi GOOGLE TASKS ----------------
+// ---------------- LÃµi GOOGLE TASKS ----------------
 ipcRenderer.on('google-ready', () => {
     loadGoogleTasks();
 
-    // TỰ ĐỘNG ĐỒNG BỘ SIÊU NHẸ BACKGROUND (20s / lần - TỐI ƯU CỰC ĐẠI CHO RAM/CPU/PIN)
+    // Tá»° Äá»˜NG Äá»’NG Bá»˜ SIÃŠU NHáº¸ BACKGROUND (20s / láº§n - Tá»I Æ¯U Cá»°C Äáº I CHO RAM/CPU/PIN)
     setInterval(backgroundSync, 20000);
 });
 
 async function loadGoogleTasks() {
-    taskListEl.innerHTML = '<div style="text-align:center; opacity:0.6; padding:10px; font-weight:bold; color: #d84315;">Cắm ống API Google... ☁️</div>';
+    
     try {
         const gTasks = await ipcRenderer.invoke('g-get-tasks');
         tasks = gTasks.map(t => ({ id: t.id, text: t.title, done: false }));
@@ -78,7 +78,7 @@ async function backgroundSync() {
         const gTasks = await ipcRenderer.invoke('g-get-tasks');
         let hasChanges = false;
 
-        // 1. Rò tìm xem có Task MỚI nào được thêm từ Điện thoại không?
+        // 1. RÃ² tÃ¬m xem cÃ³ Task Má»šI nÃ o Ä‘Æ°á»£c thÃªm tá»« Äiá»‡n thoáº¡i khÃ´ng?
         for (let gt of gTasks) {
             const exists = tasks.find(t => t.id === gt.id);
             if (!exists) {
@@ -90,17 +90,17 @@ async function backgroundSync() {
             }
         }
 
-        // 2. Tra soát xem có Task nào bị XOÁ từ Điện thoại không?
+        // 2. Tra soÃ¡t xem cÃ³ Task nÃ o bá»‹ XOÃ tá»« Äiá»‡n thoáº¡i khÃ´ng?
         const currentIds = gTasks.map(gt => gt.id);
         for (let i = tasks.length - 1; i >= 0; i--) {
-            // Loại bỏ các task Ảo (vừa khởi tạo chưa kịp nhả mã)
+            // Loáº¡i bá» cÃ¡c task áº¢o (vá»«a khá»Ÿi táº¡o chÆ°a ká»‹p nháº£ mÃ£)
             if (tasks[i].id !== 'loading' && !currentIds.includes(tasks[i].id)) {
                 tasks.splice(i, 1);
                 hasChanges = true;
             }
         }
 
-        // Chỉ Vẽ lại Render khi phát hiện sự bất đối xứng để tránh Giật (Flicker) RAM
+        // Chá»‰ Váº½ láº¡i Render khi phÃ¡t hiá»‡n sá»± báº¥t Ä‘á»‘i xá»©ng Ä‘á»ƒ trÃ¡nh Giáº­t (Flicker) RAM
         if (hasChanges) renderTasks();
     } catch (e) { console.log(e); }
 }
@@ -109,7 +109,7 @@ function renderTasks() {
     taskListEl.innerHTML = '';
 
     if (tasks.length === 0) {
-        taskListEl.innerHTML = '<div style="text-align:center; opacity:0.5; font-size: 14px; margin-top:20px;">Sổ tay trống rỗng! Hãy lên kế hoạch.</div>';
+        
         return;
     }
 
@@ -128,8 +128,8 @@ function renderTasks() {
 
         const del = document.createElement('button');
         del.className = 'delete-btn';
-        del.innerText = '✖';
-        del.title = 'Phóng thích nhiêm vụ (Xoá Vĩnh Viễn)';
+        del.innerText = 'âœ–';
+        del.title = 'PhÃ³ng thÃ­ch nhiÃªm vá»¥ (XoÃ¡ VÄ©nh Viá»…n)';
         del.onclick = (e) => { e.stopPropagation(); deleteTask(i); };
 
         item.appendChild(cb);
@@ -140,22 +140,22 @@ function renderTasks() {
 }
 
 async function toggleTask(i) {
-    if (tasks[i].id === 'loading' || tasks[i].done) return; // Khoá tương tác nếu đã Click rồi
+    if (tasks[i].id === 'loading' || tasks[i].done) return; // KhoÃ¡ tÆ°Æ¡ng tÃ¡c náº¿u Ä‘Ã£ Click rá»“i
 
-    // 1. Gạch bỏ ngay lập tức (Checkmark)
+    // 1. Gáº¡ch bá» ngay láº­p tá»©c (Checkmark)
     tasks[i].done = true;
     renderTasks();
 
-    // 2. Trao thưởng bạo kích EXP — Kiểm tra buff từ Tinh Linh Thú
-    // Gọi thẳng vào RPG System
+    // 2. Trao thÆ°á»Ÿng báº¡o kÃ­ch EXP â€” Kiá»ƒm tra buff tá»« Tinh Linh ThÃº
+    // Gá»i tháº³ng vÃ o RPG System
     const reward = RPG.addReward('TASK_COMPLETE');
     if (reward) updateStats();
 
-    // 3. Triển khai Lệnh API gửi lên Máy chủ Google
+    // 3. Triá»ƒn khai Lá»‡nh API gá»­i lÃªn MÃ¡y chá»§ Google
     const targetId = tasks[i].id;
     await ipcRenderer.invoke('g-complete-task', targetId);
 
-    // 4. Cho người dùng ngắm thành quả 1.2 Giây rồi BỐC HƠI hoàn toàn
+    // 4. Cho ngÆ°á»i dÃ¹ng ngáº¯m thÃ nh quáº£ 1.2 GiÃ¢y rá»“i Bá»C HÆ I hoÃ n toÃ n
     setTimeout(() => {
         const trueIndex = tasks.findIndex(t => t.id === targetId);
         if (trueIndex !== -1) {
@@ -168,12 +168,12 @@ async function toggleTask(i) {
 async function deleteTask(i) {
     if (tasks[i].id === 'loading') return;
 
-    // Lưu tạm id rồi Cạo ngay lập tức trên UI Offline làm Optimistic Render
+    // LÆ°u táº¡m id rá»“i Cáº¡o ngay láº­p tá»©c trÃªn UI Offline lÃ m Optimistic Render
     const targetId = tasks[i].id;
     tasks.splice(i, 1);
     renderTasks();
 
-    // Gửi tín hiệu huỷ tiêu thụ lên Google Server
+    // Gá»­i tÃ­n hiá»‡u huá»· tiÃªu thá»¥ lÃªn Google Server
     await ipcRenderer.invoke('g-remove-task', targetId);
 }
 
@@ -182,16 +182,16 @@ async function addTask() {
     if (!v) return;
     inputEl.value = '';
 
-    // Optimistic Update: Thêm Nhiệm Vụ Ảo chờ lấy ID
+    // Optimistic Update: ThÃªm Nhiá»‡m Vá»¥ áº¢o chá» láº¥y ID
     const tempIndex = tasks.length;
-    tasks.push({ id: 'loading', text: v + ' [Đang Sync] ☁️', done: false });
+    tasks.push({ id: 'loading', text: v, done: false });
     renderTasks();
     setTimeout(() => taskListEl.scrollTop = taskListEl.scrollHeight, 50);
 
-    // Truyền lệnh API thực thụ
+    // Truyá»n lá»‡nh API thá»±c thá»¥
     const gTask = await ipcRenderer.invoke('g-add-task', v);
     if (gTask) {
-        // Khi Google nhả Mã ID thật về, khoá nó vào Mảng và Gỡ Loading
+        // Khi Google nháº£ MÃ£ ID tháº­t vá», khoÃ¡ nÃ³ vÃ o Máº£ng vÃ  Gá»¡ Loading
         tasks[tempIndex].id = gTask.id;
         tasks[tempIndex].text = v;
         renderTasks();
@@ -203,8 +203,14 @@ inputEl.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addTask();
 });
 
-// Cầu Nối Không Gian Máy Chủ Nội Bộ - RPG System tự lo sync!
-// Chạy hàm nạp cơ sở EXP
+// Cáº§u Ná»‘i KhÃ´ng Gian MÃ¡y Chá»§ Ná»™i Bá»™ - RPG System tá»± lo sync!
+// Cháº¡y hÃ m náº¡p cÆ¡ sá»Ÿ EXP
 setTimeout(updateStats, 100);
-// Load Nhiệm vụ mồi
+// Load Nhiá»‡m vá»¥ má»“i
 loadGoogleTasks();
+
+
+
+
+
+

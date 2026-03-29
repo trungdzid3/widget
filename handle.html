@@ -14,7 +14,7 @@
             display: flex; align-items: center; justify-content: center;
             cursor: pointer;
             box-shadow: none;
-            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.1s;
+            transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease, transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.5s ease;
         }
 
         .handle img {
@@ -33,15 +33,6 @@
         }
         body.edge .handle img { width: 14px; height: 14px; }
 
-        /* Cháº¿ Ä‘á»™ BÃ³ng ná»•i (Chat Head) */
-        body.bubble .wrapper { justify-content: center; }
-        body.bubble .handle {
-            width: 50px; height: 50px;
-            border-radius: 50%;
-            cursor: grab;
-        }
-        body.bubble .handle img { width: 28px; height: 28px; }
-
         .handle:hover { 
             background: rgba(255, 237, 242, 0.95); 
             border-color: rgba(255, 122, 162, 1);
@@ -50,6 +41,19 @@
         .handle:hover img { opacity: 1; }
 
         .handle:active { transform: scale(0.94); cursor: grabbing; background: rgba(230, 200, 215, 0.9); }
+    
+        /* Ch? d? ngh? (Idle) - Làm m? và lùi v? vi?n */
+        body.edge.idle .handle {
+            transform: translateX(16px);
+            background: rgba(255, 237, 242, 0.1);
+            border-color: transparent;
+        }
+        body.edge.idle .handle img { opacity: 0; }
+        
+            transform: scale(0.6);
+            background: rgba(255, 237, 242, 0.2);
+            border-color: rgba(255, 122, 162, 0.2);
+        }
     </style>
 </head>
 <body class="edge">
@@ -91,7 +95,7 @@
             }
         });
 
-        window.addEventListener('mouseup', (e) => {
+        window.addEventListener('mouseup', (e) => { resetIdle(); 
             if (isDragging) {
                 isDragging = false;
                 ipcRenderer.send('handle-drag-end');
@@ -102,13 +106,27 @@
             }
         });
         
-        ipcRenderer.invoke('get-handle-style').then(style => {
-            document.body.className = style;
-        });
-
-        ipcRenderer.on('set-style', (e, styleName) => {
-            document.body.className = styleName;
-        });
+        let idleTimer;
+        function resetIdle() {
+            document.body.classList.remove('idle');
+            clearTimeout(idleTimer);
+            if (!isDragging) {
+                idleTimer = setTimeout(() => {
+                    if (!isDragging) document.body.classList.add('idle');
+                }, 2500); // 2.5 giay khong tuong tac se loi ve vien
+            }
+        }
+        window.addEventListener('mousemove', resetIdle);
+        window.addEventListener('mouseenter', resetIdle);
+        document.body.addEventListener('mouseenter', resetIdle);
+        
+        resetIdle();
     </script>
 </body>
 </html>
+
+
+
+
+
+

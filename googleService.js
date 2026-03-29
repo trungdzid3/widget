@@ -97,10 +97,12 @@ async function getTasks() {
     try {
         const res = await tasksService.tasks.list({
             tasklist: '@default', // List gốc mặc định của tài khoản
-            showCompleted: false, 
+            showCompleted: false,
             maxResults: 50
         });
-        return res.data.items || [];
+        const allItems = res.data.items || [];
+        // GIẤU NHIỆM VỤ LƯU ĐÁM MÂY ĐI, KHÔNG CHO TRẢ VỀ FRONT-END
+        return allItems.filter(t => t.title !== '[RPG_CLOUD_SAVE_DO_NOT_DELETE]');
     } catch (e) {
         return [];
     }
@@ -146,6 +148,7 @@ async function findCloudSaveTask() {
     const res = await tasksService.tasks.list({
         tasklist: '@default',
         showHidden: true,
+        showCompleted: true,
         maxResults: 100
     });
     return (res.data.items || []).find(t => t.title === '[RPG_CLOUD_SAVE_DO_NOT_DELETE]');
@@ -161,7 +164,8 @@ async function backupRPG(dataJson) {
                 requestBody: {
                     id: existing.id,
                     title: '[RPG_CLOUD_SAVE_DO_NOT_DELETE]',
-                    notes: dataJson
+                    notes: dataJson,
+                      status: 'completed'
                 }
             });
         } else {
@@ -169,7 +173,8 @@ async function backupRPG(dataJson) {
                 tasklist: '@default',
                 requestBody: {
                     title: '[RPG_CLOUD_SAVE_DO_NOT_DELETE]',
-                    notes: dataJson
+                    notes: dataJson,
+                      status: 'completed'
                 }
             });
         }
@@ -189,3 +194,4 @@ async function restoreRPG() {
 // ==============================================================================
 
 module.exports = { authenticate, getTasks, addTask, completeTask, removeTask, backupRPG, restoreRPG };
+
