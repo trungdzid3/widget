@@ -1,17 +1,19 @@
 {
   "name": "pixel-weather-widget",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Pixel Art Desktop Widget Ecosystem",
   "author": "trungdzid3",
-  "main": "main.js",
+  "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
     "publish": "electron-builder -p always"
   },
   "dependencies": {
+    "@googleapis/drive": "^20.1.0",
     "electron-updater": "^6.8.3",
-    "googleapis": "^171.4.0"
+    "googleapis": "^105.0.0",
+    "lodash.debounce": "^4.0.8"
   },
   "devDependencies": {
     "electron": "^28.0.0",
@@ -20,6 +22,10 @@
   "build": {
     "appId": "com.lofi.pixelwidget",
     "productName": "Pixel Widget",
+    "files": [
+      "**/*",
+      "config-private.json"
+    ],
     "directories": {
       "output": "dist"
     },
@@ -32,7 +38,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "icon.png"
+      "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": false,
