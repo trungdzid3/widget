@@ -33,27 +33,22 @@
         }
         body.edge .handle img { width: 14px; height: 14px; }
 
-        .handle:hover { 
-            background: rgba(255, 237, 242, 0.95); 
+        .handle:hover {
+            background: rgba(255, 237, 242, 0.95);
             border-color: rgba(255, 122, 162, 1);
             box-shadow: -2px 2px 4px rgba(0,0,0,0.15); 
         }
         .handle:hover img { opacity: 1; }
 
         .handle:active { transform: scale(0.94); cursor: grabbing; background: rgba(230, 200, 215, 0.9); }
-    
-        /* Ch? d? ngh? (Idle) - L�m m? v� l�i v? vi?n */
+
+        /* Chế độ nghỉ (Idle) - Làm mờ và lùi về viền */
         body.edge.idle .handle {
             transform: translateX(16px);
             background: rgba(255, 237, 242, 0.1);
             border-color: transparent;
         }
         body.edge.idle .handle img { opacity: 0; }
-        
-            transform: scale(0.6);
-            background: rgba(255, 237, 242, 0.2);
-            border-color: rgba(255, 122, 162, 0.2);
-        }
     </style>
 </head>
 <body class="edge">
@@ -105,14 +100,14 @@
                 }
             }
         });
-        
+
         let idleTimer;
         function resetIdle() {
             document.body.classList.remove('idle');
             clearTimeout(idleTimer);
             if (!isDragging) {
                 idleTimer = setTimeout(() => {
-                    if (!isDragging) document.body.classList.add('idle');
+                    if (!isDragging) document.body.classList.add('idle');      
                 }, 2500); // 2.5 giay khong tuong tac se loi ve vien
             }
         }
@@ -124,9 +119,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
