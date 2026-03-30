@@ -1,6 +1,6 @@
 ﻿const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut } = require('electron');
+const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut, powerMonitor } = require('electron');
 
 // Gi?m t?i l?i ngh?n Cache dia khi t?o 6 c?a s? d? h?a thu? tinh (transparent) c?ng l?c
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -22,6 +22,9 @@ app.commandLine.appendSwitch('enable-hardware-overlays');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
 // Táº¯t tÃ­nh nÄƒng háº¡n cháº¿ Timer ná»n (GiÃºp cho viá»‡c Ä‘áº¿m ngÆ°á»£c / cáº­p nháº­t thá»i tiáº¿t khÃ´ng bá»‹ Ä‘á»©ng khi cá»­a sá»• bá»‹ khuáº¥t)
 app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-calculate-native-win-occlusion'); // Cáº¤M BÄ‚M KHUNG HÃŒNH: TrÃ¡nh bá»‹ lá»—i tÃ ng hÃ¬nh máº¥t cá»­a sá»• khi khÃ´ng click vÃ o vÃ i tiáº¿ng hoáº·c bá»‹ app khÃ¡c che máº¥t
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'true');
 
 const { autoUpdater } = require('electron-updater');
 const googleService = require('./googleService');
@@ -200,6 +203,8 @@ function toggleSmartVisibility(forceShow = null) {
             if (isShow) {
                 if (wins[key].isMinimized()) wins[key].restore();
                 wins[key].setOpacity(1);
+                // Force always on top again
+                wins[key].setAlwaysOnTop(true, 'screen-saver');
                 try { wins[key].webContents.setFrameRate(60); wins[key].webContents.backgroundThrottling = false; } catch(e){}
                 wins[key].setIgnoreMouseEvents(mState.pinned[key] || false, { forward: true });
             } else {
@@ -227,6 +232,7 @@ function createWindows() {
         width: hw, height: hh,
         x: initX, y: handleBounds.y,
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
+        type: 'toolbar',
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
     handleWin.loadFile('handle.html');
@@ -240,6 +246,7 @@ function createWindows() {
         width: 261, height: LAUNCHER_H,
         x: width - 261, y: Math.floor(height / 2) - Math.floor(LAUNCHER_H / 2),
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
+        type: 'toolbar',
         show: true, opacity: 0, // Gi?i ph?p t?i thu?ng: Render s?n nhung Kh?ng hi?n th? d? s?ng!
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
@@ -248,8 +255,11 @@ function createWindows() {
     launcherWin.setAlwaysOnTop(true, 'screen-saver');
 
     function openSidebar() {
+        if (launcherWin.isMinimized()) launcherWin.restore();
         launcherWin.setOpacity(1); // Tri?u h?i b?ng GPU c?c mu?t
+        launcherWin.setAlwaysOnTop(true, 'screen-saver'); // Ch?ng m?t u ti?n
         launcherWin.setIgnoreMouseEvents(false);
+        launcherWin.showInactive(); // p BU?C H? ?i?u hnh hi?n th? n?u g?p l?i tng hnh
         launcherWin.focus();
 
         if (handleWin) {
@@ -264,7 +274,10 @@ function createWindows() {
         launcherWin.setIgnoreMouseEvents(true);
 
         if (handleWin) {
+            if (handleWin.isMinimized()) handleWin.restore();
             handleWin.setOpacity(1);
+            handleWin.setAlwaysOnTop(true, 'screen-saver');
+            handleWin.showInactive();
             handleWin.setIgnoreMouseEvents(false);
         }
     }
@@ -357,12 +370,30 @@ function createWindows() {
         const win = new BrowserWindow({
             width: b.width, height: b.height, x: b.x, y: b.y,
             transparent: true, frame: false, alwaysOnTop: true, resizable: !!extra.resizable, skipTaskbar: true,
+            type: 'toolbar',
             show: true, opacity: mState.active[name] ? 1 : 0,
-            webPreferences: webPrefs,
+            webPreferences: { backgroundThrottling: false, ...webPrefs },
             ...extra
         });
+        
+        // Gia cá»‘ CÆ°á»¡ng Cháº¿ widget á»Ÿ lá»›p Screen-Saver Ä‘á»ƒ khÃ´ng bao giá» bá»‹ Ä‘Ã¨ mÆ°á»£n bá»Ÿi Fullscreen Apps
+        win.setAlwaysOnTop(true, 'screen-saver');
         win.loadFile(file);
         
+        // CÆ¡ cháº¿ phá»¥c há»“i Widget náº¿u GPU hoáº·c Ram gÃ¢y Crash áº©n khung hÃ¬nh
+        win.webContents.on('render-process-gone', (e, details) => {
+            if (details.reason === 'crashed' || details.reason === 'oom' || details.reason === 'killed') {
+                console.log(`[Crash Recovery] Auto-reloading ${name} widget due to ${details.reason}`);
+                setTimeout(() => { if (!win.isDestroyed()) win.reload(); }, 1500);
+            }
+        });
+        
+        // KhÃ´ng pháº£i lÃ  Crash mÃ  chá»‰ Ä‘Æ¡ lÃµi JS (Unresponsive) do Ä‘á»ƒ background quÃ¡ lÃ¢u
+        win.on('unresponsive', () => {
+            console.log(`[Unresponsive] ${name} widget frozen. Reloading...`);
+            setTimeout(() => { if (!win.isDestroyed()) win.reload(); }, 500);
+        });
+
         let moveTimeout;
         win.on('move', () => {
             clearTimeout(moveTimeout);
@@ -462,6 +493,8 @@ ipcMain.on('toggle-widget', (event, name, isVisible) => {
         if (isVisible) {
             if (wMap[name].isMinimized()) wMap[name].restore();
             wMap[name].setOpacity(1);
+            // Má»—i láº§n báº­t láº¡i, gá»i láº¡i alwaysOnTop Ä‘á»ƒ chá»‘ng rÆ¡t cáº¥p sau khi Explorer Windows khá»Ÿi Ä‘á»™ng láº¡i hoáº·c thoÃ¡t Game Fullscreen
+            wMap[name].setAlwaysOnTop(true, 'screen-saver');
             try { wMap[name].webContents.setFrameRate(60); wMap[name].webContents.backgroundThrottling = false; } catch(e){}
             wMap[name].setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         } else {
@@ -494,6 +527,39 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
 });
 
 app.whenReady().then(() => {
+    // Láº¯ng nghe há»‡ thá»‘ng thá»©c giáº¥c (Sleep / Resume) Ä‘á»ƒ chá»‘ng lá»—i tÃ ng hÃ¬nh
+    function wakeUpWindows() {
+        console.log('[System Wake] Force repainting framework windows...');
+        const allWins = BrowserWindow.getAllWindows();
+        allWins.forEach(w => {
+            if (!w || w.isDestroyed()) return;
+            // Ép OS vẽ lại báo hụt GPU
+            const [wW, wH] = w.getSize();
+            w.setSize(wW, wH + 1);
+            w.setSize(wW, wH);
+            if (w.isMinimized()) w.restore();
+            // Náº¿u opacity > 0 thÃ¬ ép hiá»‡n lên (nÃ© Windows nuá»‘t forms)
+            if (w.getOpacity() > 0) {
+                w.showInactive();
+                w.setAlwaysOnTop(true, 'screen-saver');
+            }
+        });
+        
+        // Dáº£m báº£o Tai thá» khÃ´ng bá»‹ kẹt
+        if (handleWin && launcherWin) {
+            if (launcherWin.getOpacity() === 0) {
+                if (handleWin.isMinimized()) handleWin.restore();
+                handleWin.setOpacity(1);
+                handleWin.setIgnoreMouseEvents(false);
+                handleWin.showInactive();
+                handleWin.setAlwaysOnTop(true, 'screen-saver');
+            }
+        }
+    }
+
+    powerMonitor.on('resume', wakeUpWindows);
+    powerMonitor.on('unlock-screen', wakeUpWindows);
+
     // ÄÄƒng kÃ½ PhÃ­m táº¯t ToÃ n Cáº§u Ä‘á»ƒ áº¨n / Má»Ÿ láº¡i thÃ´ng minh (Ctrl+Shift+D)
     globalShortcut.register('CommandOrControl+Shift+D', () => {
         toggleSmartVisibility(null);
@@ -512,8 +578,11 @@ app.whenReady().then(() => {
       tray.on('right-click', () => { if (tray.contextMenu) tray.popUpContextMenu(tray.contextMenu); });
         tray.on('click', () => {
             if (launcherWin) {
+                if (launcherWin.isMinimized()) launcherWin.restore();
                 launcherWin.setOpacity(1);
+                launcherWin.setAlwaysOnTop(true, 'screen-saver');
                 launcherWin.setIgnoreMouseEvents(false);
+                launcherWin.showInactive();
                 launcherWin.focus();
                 if (handleWin) {
                     handleWin.setOpacity(0);
@@ -523,8 +592,11 @@ app.whenReady().then(() => {
         });
         tray.on('double-click', () => {
           if (launcherWin) {
+              if (launcherWin.isMinimized()) launcherWin.restore();
               launcherWin.setOpacity(1);
+              launcherWin.setAlwaysOnTop(true, 'screen-saver');
               launcherWin.setIgnoreMouseEvents(false);
+              launcherWin.showInactive();
               launcherWin.focus();
               if (handleWin) {
                   handleWin.setOpacity(0);
