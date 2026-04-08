@@ -1,6 +1,6 @@
 {
   "name": "pixel-weather-widget",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Pixel Art Desktop Widget Ecosystem",
   "author": "trungdzid3",
   "main": "main.js",
@@ -10,7 +10,6 @@
     "publish": "electron-builder -p always"
   },
   "dependencies": {
-    "@googleapis/drive": "^20.1.0",
     "electron-updater": "^6.8.3",
     "googleapis": "^105.0.0",
     "lodash.debounce": "^4.0.8"
@@ -24,6 +23,11 @@
     "productName": "Pixel Widget",
     "files": [
       "**/*",
+      "!dist/**",
+      "!backup_local/**",
+      "!WeatherWidget_Backup_PreOptimization/**",
+      "!.git/**",
+      "!**/*.md",
       "config-private.json"
     ],
     "directories": {

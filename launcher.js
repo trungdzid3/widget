@@ -55,6 +55,17 @@ if(startupToggle) {
     startupToggle.addEventListener('change', (e) => ipcRenderer.send('toggle-startup', e.target.checked));
 }
 
+// Hiển thị phiên bản ứng dụng
+try {
+    const pkg = require('./package.json');
+    const versionDisplay = document.getElementById('app-version-display');
+    if (versionDisplay) {
+        versionDisplay.innerText = `Phiên bản: v${pkg.version}`;
+    }
+} catch (e) {
+    console.error('Không thể đọc package.json', e);
+}
+
 // Cho phép kéo trượt thanh Launcher đi mọi nơi (Ngoài các nút bấm)
 let sidebarOpenTime = 0;
 ipcRenderer.on('play-open', () => sidebarOpenTime = Date.now());
