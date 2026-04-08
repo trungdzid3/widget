@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Pixel Calendar</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="calendar.css">
+</head>
+<body>
+    <div class="calendar-container">
+        <div class="drag-header">
+    <div class="header-left">
+        <span class="title-text">&#128197; Lịch Lofi</span>
+    </div>
+    <div class="header-right">
+        <span class="btn-settings" id="btn-settings" title="Cài đặt Lịch">&#9881;</span>
+        <span class="drag-handle" title="Kéo để di chuyển">🖐</span>
+    </div>
+</div>
+<div class="view-tabs">
+            <button class="view-btn" data-view="day">Ngày</button>
+            <button class="view-btn active" data-view="week">Tuần</button>
+            <button class="view-btn" data-view="month">Tháng</button>
+        </div>
+        <div class="main-layout">
+            <div class="event-list" id="event-list">
+                <div class="loading">Đang tải sự kiện...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settings-modal">
+        <div class="settings-content">
+            <span class="close-settings" id="close-settings">&times;</span>
+            <h3 style="margin-top:0;">Cấu hình Lịch</h3>
+            
+            <label class="toggle-row">
+                <input type="checkbox" id="toggle-google" checked>
+                <span>&#128197; Hiển thị Google Calendar</span>
+            </label>
+
+            <label class="toggle-row">
+                <input type="checkbox" id="toggle-apple">
+                <span>&#127822; Hiển thị Apple (iCloud)</span>
+            </label>
+            
+            <div class="input-group">
+                <label>Link chia sẻ Apple (.ics):</label>
+                <input type="text" id="input-ical" placeholder="webcal://p...icloud.com/..." autocomplete="off" spellcheck="false" style="width: calc(100% - 15px);">
+                <button class="btn-save-settings" id="btn-save-settings">Lưu & Đồng bộ</button>
+            </div>
+        </div>
+    </div>
+    <script src="calendar.js"></script>
+</body>
+</html>

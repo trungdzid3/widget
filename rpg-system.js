@@ -10,6 +10,7 @@ const RPG = {
         MAX_LEVEL: 50,
         REWARDS: {
             TASK_COMPLETE: { xp: 25, coins: 5 },  // Note task
+            FOLDER_COMPLETE: { xp: 50, coins: 10 }, // HoÃ n thÃ nh táº¥t cáº£ thÆ° má»¥c
             POMODORO_25:   { xp: 50, coins: 15 }, // Plant cycle (short)
             POMODORO_50:   { xp: 120, coins: 40 }, // Plant cycle (long)
         }
@@ -28,6 +29,8 @@ const RPG = {
 
     // Initialize & Load
     init() {
+        if (this._initialized) { this.load(); return; }
+        this._initialized = true;
         this.load();
         window.addEventListener('storage', (e) => {
             if (e.key === 'rpg_player_v2') {
@@ -68,9 +71,9 @@ const RPG = {
                                 console.log('Đã nạp thành công Cloud Save về máy mới!');
                                 setTimeout(() => window.location.reload(), 1000);
                             }
-                        } catch(e){}
+                        } catch(e) { console.error('Cloud restore parsing error:', e); }
                     }
-                });
+                }).catch(e => console.error('g-restore-rpg API failure:', e));
             }
         } catch (e) { console.error("RPG Load Error:", e); }
     },

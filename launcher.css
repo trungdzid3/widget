@@ -6,7 +6,7 @@ body, html {
     overflow: hidden;
 }
 
-.dashboard {
+.dashboard { transition: 0.3s cubic-bezier(0.4,0,0.2,1); opacity: 0; transform: translateX(110%);
     padding: 14px 18px 14px 34px; 
     min-width: 250px;
     margin: 2px 2px 9px 9px;
@@ -73,3 +73,5 @@ input:checked + .slider:before { left: 21px; }
 .radio-opt input { margin: 0; accent-color: #ff7aa2;}
 
 .footer-hint { text-align: center; font-size: 14px; opacity: 0.85; line-height: 1.35; padding: 4px 0; font-weight: bold;}
+
+body.open .dashboard { opacity: 1; transform: translateX(0); }

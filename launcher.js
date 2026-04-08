@@ -1,6 +1,6 @@
 const { ipcRenderer } = require('electron');
 
-const wNames = ['weather', 'note', 'plant', 'pet'];
+const wNames = ['weather', 'note', 'plant', 'pet', 'calendar'];
 
 let isDragging = false;
 let startOffset = {x: 0, y: 0};
@@ -56,7 +56,11 @@ if(startupToggle) {
 }
 
 // Cho phép kéo trượt thanh Launcher đi mọi nơi (Ngoài các nút bấm)
+let sidebarOpenTime = 0;
+ipcRenderer.on('play-open', () => sidebarOpenTime = Date.now());
 document.addEventListener('mousedown', (e) => {
+    if (Date.now() - sidebarOpenTime < 1000) return;
+
     // 1. Cảm biến Mù Trọng lực: Khắc phục lỗi Kính tàng hình (Buffer 20px Height thừa của Main OS)
     // Nếu Click vượt khỏi ranh giới vách tường hồng của hộp Dashboard -> Kích hoạt lệnh Gập Bảng ngay lập tức!
     if (!e.target.closest('.dashboard')) {

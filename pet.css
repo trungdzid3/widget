@@ -2,7 +2,7 @@
 
 :root { --pet-theme: #81c784; }
 
-body, html {
+body, html { zoom: 0.8;
     margin: 0; padding: 0; height: 100%; overflow: hidden;
     background: transparent; font-family: 'VT323', monospace;
     user-select: none; -webkit-user-select: none;
@@ -51,10 +51,21 @@ body, html {
 /* ===== PET STAGE ===== */
 .pet-stage {
     flex: 1; display: flex; align-items: center; justify-content: center;
+  display: flex;
+  opacity: 1;
     background: radial-gradient(circle at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
     position: relative; overflow: hidden; min-height: 140px;
 }
 .pet-sprite {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 150px;
+    height: 150px;
+    
+    
+    
+
     font-size: min(120px, 20vh); /* Fix lỗi Big Orange Egg phình to hiển thị */
     filter: drop-shadow(0 10px 6px rgba(0,0,0,0.15));
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -65,20 +76,20 @@ body, html {
 .pet-sprite:active { transform: scale(0.95) rotate(5deg); }
 
 /* ===== ANIMATIONS ===== */
-@keyframes idle-egg    { 0%,100%{transform:translateY(0) rotate(0)}    50%{transform:translateY(-4px) rotate(5deg)} }
+@keyframes idle-egg { 0%, 100% {transform: scale(1) translateY(0);} 15% {transform: scale(1.15, 0.85) translateY(12px);} 45% {transform: scale(0.85, 1.15) translateY(-25px);} 70% {transform: scale(1.1, 0.9) translateY(6px);} 85% {transform: scale(0.95, 1.05) translateY(-5px);} }
 @keyframes idle-float  { 0%,100%{transform:translateY(2px)}            50%{transform:translateY(-14px)} }
 @keyframes idle-bounce { 0%,100%{transform:translateY(0) scale(1,1)}   50%{transform:translateY(-16px) scale(0.95,1.05)} }
 @keyframes idle-pulse  { 0%,100%{transform:scale(1)}                   50%{transform:scale(1.08)} }
 
 /* Interaction Animations */
-@keyframes anim-run-x { 
-    0% { transform: translateX(0) scaleX(1); }
-    25% { transform: translateX(-20px) scaleX(1); }
-    49% { transform: translateX(-20px) scaleX(1); }
-    50% { transform: translateX(-20px) scaleX(-1); } /* Turn around */
-    75% { transform: translateX(20px) scaleX(-1); }
-    99% { transform: translateX(20px) scaleX(1); } /* Turn back */
-    100% { transform: translateX(0) scaleX(1); }
+@keyframes anim-run-x {
+    0% { transform: translateX(0) scaleX(-1); }
+    25% { transform: translateX(-30px) scaleX(-1); }
+    49% { transform: translateX(-30px) scaleX(-1); }
+    50% { transform: translateX(-30px) scaleX(1); }
+    75% { transform: translateX(30px) scaleX(1); }
+    99% { transform: translateX(30px) scaleX(1); }
+    100% { transform: translateX(0) scaleX(-1); }
 }
 @keyframes anim-sit-down {
     0% { transform: scale(1, 1); }
@@ -109,7 +120,8 @@ body, html {
 
 /* ===== PET DASHBOARD ===== */
 .pet-dashboard {
-    background: #fff; border-radius: 12px; margin: -15px 12px 6px; z-index: 5; position: relative;
+    background: #fff; border-radius: 16px 16px 20px 20px; margin: auto 4px 4px; z-index: 5; position: relative;
+    box-sizing: border-box;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.1); padding: 10px 12px; border: 4px solid var(--pet-theme);
     image-rendering: pixelated;
 }
@@ -119,8 +131,8 @@ body, html {
     display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;
     padding: 0 4px; border-bottom: 2px dashed rgba(0,0,0,0.1); padding-bottom: 4px;
 }
-.pet-name  { font-size: 20px; font-weight: bold; color: #388e3c; }
-.pet-level { font-size: 18px; color: #f57c00; font-weight: bold; }
+.pet-name  { font-size: 22px; font-weight: bold; color: #388e3c; }
+.pet-level { font-size: 20px; color: #f57c00; font-weight: bold; }
 
 /* ===== EXP BAR ===== */
 .exp-bar-wrap { padding: 0 0 10px; }
@@ -132,7 +144,7 @@ body, html {
     height: 100%; background: #66bb6a; border-right: 3px solid #388e3c;
     border-radius: 0; transition: width 0.3s ease;
 }
-.exp-bar-label { font-size: 16px; color: #555; text-align: center; margin-top: 4px; font-weight: bold; }
+.exp-bar-label { font-size: 18px; color: #555; text-align: center; margin-top: 4px; font-weight: bold; }
 
 /* ===== BUFF STATUS ===== */
 .buff-status {
@@ -161,7 +173,7 @@ body, html {
 .action-btn {
     appearance: none; flex: 1; border: 3px solid #66bb6a;
     background: #c8e6c9; color: #1b5e20;
-    font-family: 'VT323', monospace; font-size: 18px; font-weight: bold;
+    font-family: 'VT323', monospace; font-size: 20px; font-weight: bold;
     border-radius: 8px; padding: 4px 6px; cursor: pointer;
     box-shadow: 4px 4px 0 #66bb6a; transition: 0.1s;
     display: flex; justify-content: center; align-items: center; gap: 4px;
@@ -234,3 +246,43 @@ body, html {
 .change-species-btn:hover { background: #ffedf2; transform: scale(1.02); }
 .change-species-btn:active { transform: scale(0.98); }
 
+
+
+
+
+
+
+/* ENLARGE TITLE AND EGG */
+.pet-header .title { font-size: 1.5em; }
+#pet-sprite { font-size: min(150px, 20vh) !important; }
+
+/* MODERN CHANGE SPECIES BTN */
+#change-species-btn {
+  /* Removed display override so JS works */
+  position: absolute;
+  top: 50px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e8f5e9;
+  border: 2px solid #66bb6a;
+  color: #2e7d32;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 0 #66bb6a;
+  transition: 0.1s;
+  line-height: 1;
+}
+#change-species-btn:hover { transform: translateY(-2px); }
+#change-species-btn:active { transform: translateY(2px); box-shadow: none; }
+
+
+/* ENLARGE SPRITE */
+#pet-sprite { transform-origin: bottom center; width: 180px; height: 180px; font-size: min(180px, 30vh) !important; }
+
+
+#pet-main { display: flex; flex-direction: column; flex: 1; }

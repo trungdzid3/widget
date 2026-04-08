@@ -58,64 +58,64 @@
         </div>
     </div>
     <script>
-        const { ipcRenderer } = require('electron');
-        const btn = document.getElementById('btn');
-
-        let isDragging = false;
-        let diffX = 0, diffY = 0;
-        let hasMoved = false;
-        let initialScreenX = 0, initialScreenY = 0;
-
-        btn.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // Chuột trái
-            isDragging = true;
-            hasMoved = false;
-            diffX = e.clientX;
-            diffY = e.clientY;
-            initialScreenX = e.screenX;
-            initialScreenY = e.screenY;
-            ipcRenderer.send('handle-drag-start');
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                if (!hasMoved) {
-                    if (Math.abs(e.screenX - initialScreenX) > 2 || Math.abs(e.screenY - initialScreenY) > 2) {
-                        hasMoved = true;
-                    }
-                }
-                if (hasMoved) {
-                    ipcRenderer.send('handle-drag');
-                }
-            }
-        });
-
-        window.addEventListener('mouseup', (e) => { resetIdle(); 
-            if (isDragging) {
-                isDragging = false;
-                ipcRenderer.send('handle-drag-end');
-                
-                if (!hasMoved) {
-                    ipcRenderer.send('open-sidebar');
-                }
-            }
-        });
-
-        let idleTimer;
-        function resetIdle() {
-            document.body.classList.remove('idle');
-            clearTimeout(idleTimer);
-            if (!isDragging) {
-                idleTimer = setTimeout(() => {
-                    if (!isDragging) document.body.classList.add('idle');      
-                }, 2500); // 2.5 giay khong tuong tac se loi ve vien
+const { ipcRenderer } = require('electron');
+const btn = document.getElementById('btn');
+let isDragging = false;
+let hasMoved = false;
+let initialScreenX = 0, initialScreenY = 0;
+btn.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    btn.setPointerCapture(e.pointerId);
+    isDragging = true;
+    hasMoved = false;
+    initialScreenX = e.screenX;
+    initialScreenY = e.screenY;
+    ipcRenderer.send('handle-drag-start');
+    resetIdle();
+});
+window.addEventListener('pointermove', (e) => {
+    if (isDragging) {
+        if (!hasMoved) {
+            if (Math.abs(e.screenX - initialScreenX) > 10 || Math.abs(e.screenY - initialScreenY) > 10) {
+                hasMoved = true;
             }
         }
-        window.addEventListener('mousemove', resetIdle);
-        window.addEventListener('mouseenter', resetIdle);
-        document.body.addEventListener('mouseenter', resetIdle);
-        
-        resetIdle();
-    </script>
+        if (hasMoved) {
+            ipcRenderer.send('handle-drag');
+        }
+    }
+});
+window.addEventListener('pointerup', (e) => {
+    if (isDragging) {
+        isDragging = false;
+        try { btn.releasePointerCapture(e.pointerId); } catch(err) {}
+        ipcRenderer.send('handle-drag-end');
+        if (!hasMoved) {
+            ipcRenderer.send('open-sidebar');
+        }
+    }
+    resetIdle();
+});
+let idleTimer;
+function resetIdle() {
+    document.body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    if (!isDragging) {
+        idleTimer = setTimeout(() => {
+            if (!isDragging) document.body.classList.add('idle');
+        }, 2000);
+    }
+}
+window.addEventListener('mousemove', resetIdle);
+window.addEventListener('mouseenter', resetIdle);
+document.body.addEventListener('mouseenter', resetIdle);
+window.addEventListener('mouseleave', () => {
+    if (!isDragging) {
+        clearTimeout(idleTimer);
+        document.body.classList.add('idle');
+    }
+});
+resetIdle();
+</script>
 </body>
 </html>

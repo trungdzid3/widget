@@ -66,6 +66,19 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+
+                    <div class="widget-item">
+                        <span class="icon">📅</span>
+                        <div class="info">
+                            <h2>Lịch Google</h2>
+                            <p>Sự kiện sắp tới</p>
+                        </div>
+                        <button class="pin-btn" id="pin-calendar" title="Hoá đá xuyên chuột"></button>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-calendar">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="settings-box">
@@ -80,6 +93,6 @@
         </div>
     </div>
     <script src="launcher.js"></script>
-</body>
+<script>require('electron').ipcRenderer.on('play-open', () => document.body.classList.add('open')); require('electron').ipcRenderer.on('play-close', () => document.body.classList.remove('open'));</script></body>
 
 </html>

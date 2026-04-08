@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut, powerMonitor } = require('electron');
 
@@ -151,14 +151,16 @@ function saveState(s) {
     try { fs.writeFileSync(STATE_FILE, JSON.stringify(s)); } catch(e) {}
 }
 
-let handleWin, launcherWin, weatherWin, noteWin, plantWin, petWin, petWalkWin, tray;
+let handleWin, launcherWin, weatherWin, noteWin, plantWin, petWin, petWalkWin, calendarWin, tray;
 let mState = getState();
 // Migrate old configs safely
-if(!mState.active) mState.active = { weather: false, note: false, plant: false, pet: false };
+if(!mState.active) mState.active = { weather: false, note: false, plant: false, pet: false, calendar: false };
 if(mState.active.plant === undefined) mState.active.plant = false;
 if(mState.active.pet === undefined) mState.active.pet = false;
-if(!mState.pinned) mState.pinned = { weather: false, note: false, plant: false, pet: false };
+if(mState.active.calendar === undefined) mState.active.calendar = false;
+if(!mState.pinned) mState.pinned = { weather: false, note: false, plant: false, pet: false, calendar: false };
 if(mState.pinned.pet === undefined) mState.pinned.pet = false;
+if(mState.pinned.calendar === undefined) mState.pinned.calendar = false;
 if(!mState.handleStyle || mState.handleStyle === 'bubble') mState.handleStyle = 'edge';
 let isQuiting = false;
 let lastActiveState = null;
@@ -176,7 +178,7 @@ function updateTrayMenu() {
 }
 
 function toggleSmartVisibility(forceShow = null) {
-    const wins = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
+    const wins = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin, calendar: calendarWin };
     
     // Náº¿u forceShow = null (tá»« phÃ­m táº¯t), sáº½ ÄÃ³ng náº¿u Ä‘ang cÃ³ widget má»Ÿ, vÃ  Má»Ÿ náº¿u má»i thá»© Ä‘ang áº©n
     let isCurrentlyShowingAny = Object.values(mState.active).some(v => v === true);
@@ -232,7 +234,6 @@ function createWindows() {
         width: hw, height: hh,
         x: initX, y: handleBounds.y,
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
-        type: 'toolbar',
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
     handleWin.loadFile('handle.html');
@@ -246,7 +247,6 @@ function createWindows() {
         width: 261, height: LAUNCHER_H,
         x: width - 261, y: Math.floor(height / 2) - Math.floor(LAUNCHER_H / 2),
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
-        type: 'toolbar',
         show: true, opacity: 0, // Gi?i ph?p t?i thu?ng: Render s?n nhung Kh?ng hi?n th? d? s?ng!
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
@@ -254,13 +254,14 @@ function createWindows() {
     launcherWin.setIgnoreMouseEvents(true); // Kho? Tuong t?c chu?t khi dang T?ng h?nh
     launcherWin.setAlwaysOnTop(true, 'screen-saver');
 
-    function openSidebar() {
+let lastOpened=0; function openSidebar() { lastOpened=Date.now(); 
         if (launcherWin.isMinimized()) launcherWin.restore();
-        launcherWin.setOpacity(1); // Tri?u h?i b?ng GPU c?c mu?t
-        launcherWin.setAlwaysOnTop(true, 'screen-saver'); // Ch?ng m?t u ti?n
+        launcherWin.setOpacity(1); // Triệu hồi bằng GPU cực muợt
+        launcherWin.setAlwaysOnTop(true, 'screen-saver'); // Chống mất ưu tiên 
         launcherWin.setIgnoreMouseEvents(false);
-        launcherWin.showInactive(); // p BU?C H? ?i?u hnh hi?n th? n?u g?p l?i tng hnh
-        launcherWin.focus();
+        launcherWin.show();
+        setTimeout(() => launcherWin.focus(), 150); // Delay lấy focus để tránh bị OS giật ngược
+        launcherWin.webContents.send('play-open');
 
         if (handleWin) {
             handleWin.setOpacity(0);
@@ -269,22 +270,27 @@ function createWindows() {
     }
 
     function closeSidebar() {
-        // R?t th?
-        launcherWin.setOpacity(0);
+        launcherWin.webContents.send('play-close');
         launcherWin.setIgnoreMouseEvents(true);
-
-        if (handleWin) {
-            if (handleWin.isMinimized()) handleWin.restore();
-            handleWin.setOpacity(1);
-            handleWin.setAlwaysOnTop(true, 'screen-saver');
-            handleWin.showInactive();
-            handleWin.setIgnoreMouseEvents(false);
-        }
+        setTimeout(() => {
+            launcherWin.setOpacity(0);
+            if (handleWin) {
+                if (handleWin.isMinimized()) handleWin.restore();
+                handleWin.setOpacity(1);
+                handleWin.setAlwaysOnTop(true, 'screen-saver');
+                handleWin.showInactive();
+                handleWin.setIgnoreMouseEvents(false);
+            }
+        }, 300);
     }
 
     ipcMain.on('open-sidebar', openSidebar);
     ipcMain.on('close-sidebar', closeSidebar);
-    launcherWin.on('blur', closeSidebar);
+    launcherWin.on('blur', () => { 
+        if (Date.now() - lastOpened > 300) { 
+            closeSidebar(); 
+        } 
+    });
     
     // Custom JS Dragging cho Tai th? (Logic ch?n m?p m?n h?nh c? di?n)
     let handleDragOffsetX = 0;
@@ -448,7 +454,7 @@ function createWindows() {
 
     // 2. Sá»• Nhiá»‡m Vá»¥ (Chiá»u rá»™ng bÃ¹ margin 11px)
     const defNoteX = width - 900;
-    noteWin = createWidget('note', 'note.html', [271, 300, defNoteX, weatherWin.getBounds().y], 
+    noteWin = createWidget('note', 'note.html', [271, 375, defNoteX, weatherWin.getBounds().y], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
 
     // 3. Plant (Tamagotchi / Pomodoro Lofi) (Chiá»u rá»™ng + chiá»u cao bÃ¹ 11px margin tÃ ng hÃ¬nh)
@@ -456,9 +462,17 @@ function createWindows() {
         { nodeIntegration: true, contextIsolation: false });
 
     // 4. Pet (ThÃº CÆ°ng RPG) (Chiá»u rá»™ng + chiá»u cao bÃ¹ 11px margin tÃ ng hÃ¬nh)
-    petWin = createWidget('pet', 'pet.html', [341, 401, width - 600, 300], 
+    petWin = createWidget('pet', 'pet.html', [273, 321, width - 600, 300], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
-    petWin.setSize(341, 401); // Hard fix for pet size
+    petWin.setSize(273, 321); // Hard fix for pet size
+
+    // 5. Calendar (Lá»‹ch Google)
+    calendarWin = createWidget('calendar', 'calendar.html', [300, 400, width - 600, 600], {
+        preload: path.join(__dirname, 'preload.js'),
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false
+    });
 }
 
 // GUI Comm Channels
@@ -478,6 +492,27 @@ ipcMain.on('rpg-state-update', (e, state) => {
 ipcMain.handle('get-widget-states', () => mState);
 ipcMain.handle('get-startup', () => app.getLoginItemSettings().openAtLogin);
 
+
+ipcMain.handle("fetch-apple-calendar", (e, urlStr) => {
+    return new Promise((resolve, reject) => {
+        if (!urlStr) return resolve("");
+        let url = urlStr.replace("webcal://", "https://");
+        const { net } = require("electron");
+        const request = net.request(url);
+        request.on("response", (response) => {
+            let data = "";
+            response.on("data", (chunk) => { data += chunk; });
+            response.on("end", () => resolve(data));
+        });
+        request.on("error", (err) => reject(err));
+        request.end();
+    });
+});
+
+ipcMain.handle('get-calendar-events', async (e, viewType) => {
+    return await googleService.getCalendarEvents(viewType);
+});
+
 ipcMain.on('toggle-startup', (e, checked) => {
     app.setLoginItemSettings({
         openAtLogin: checked,
@@ -488,7 +523,7 @@ ipcMain.on('toggle-startup', (e, checked) => {
 ipcMain.on('toggle-widget', (event, name, isVisible) => {
     mState.active[name] = isVisible;
     saveState(mState);
-    const wMap = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
+    const wMap = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin, calendar: calendarWin };
     if (wMap[name] && !wMap[name].isDestroyed()) {
         if (isVisible) {
             if (wMap[name].isMinimized()) wMap[name].restore();
@@ -508,7 +543,7 @@ ipcMain.on('toggle-widget', (event, name, isVisible) => {
 ipcMain.on('pin-widget', (event, name, isPinned) => {
     mState.pinned[name] = isPinned;
     saveState(mState);
-    const wMap = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin };
+    const wMap = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin, calendar: calendarWin };
     if (wMap[name] && !wMap[name].isDestroyed()) wMap[name].setIgnoreMouseEvents(isPinned, { forward: true });
 });
 
@@ -614,11 +649,15 @@ app.whenReady().then(() => {
         }).catch(err => console.log("Hỏng Google Auth:", err));
     }, 2500);
 
-    // =============== Google IPC C?u N?i API ===============
-    ipcMain.handle('g-get-tasks', async () => await googleService.getTasks());
-    ipcMain.handle('g-add-task', async (e, title) => await googleService.addTask(title));
-    ipcMain.handle('g-complete-task', async (e, id) => await googleService.completeTask(id));
-    ipcMain.handle('g-remove-task', async (e, id) => await googleService.removeTask(id));
+    // =============== Google IPC Cầu Nối API ===============
+    ipcMain.handle('g-get-tasklists', async () => await googleService.getTaskLists());
+    ipcMain.handle('g-add-tasklist', async (e, title) => await googleService.addTaskList(title));
+    ipcMain.handle('g-remove-tasklist', async (e, listId) => await googleService.removeTaskList(listId));
+    ipcMain.handle('g-get-tasks', async (e, listId) => await googleService.getTasks(listId));
+    ipcMain.handle('g-add-task', async (e, title, listId) => await googleService.addTask(title, listId));
+    ipcMain.handle('g-complete-task', async (e, id, listId) => await googleService.completeTask(id, listId));
+    ipcMain.handle('g-update-task-status', async (e, taskId, status, listId) => await googleService.updateTaskStatus(listId, taskId, status));
+    ipcMain.handle('g-remove-task', async (e, id, listId) => await googleService.removeTask(id, listId));
     
     // ÄÃ¡m mÃ¢y
     ipcMain.handle('g-backup-rpg', async (e, data) => await googleService.backupRPG(data));
@@ -689,6 +728,7 @@ app.on('activate', () => {
     // macOS: Táº¡o láº¡i Windows náº¿u click vÃ o Dock icon
     if (BrowserWindow.getAllWindows().length === 0) createWindows();
 });
+
 
 
 

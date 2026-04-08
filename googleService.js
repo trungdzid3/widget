@@ -1,4 +1,4 @@
-const { BrowserWindow } = require('electron');
+﻿const { BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -6,32 +6,37 @@ const os = require('os');
 let CLIENT_ID = '';
 let CLIENT_SECRET = '';
 const REDIRECT_URI = 'http://localhost'; 
-const SCOPES = ['https://www.googleapis.com/auth/tasks'];
+const SCOPES = [
+    'https://www.googleapis.com/auth/tasks',
+    'https://www.googleapis.com/auth/calendar.readonly'
+];
 
 const TOKEN_PATH = path.join(os.homedir(), '.lofi-tasks-token.json');
 const SECRETS_PATH = path.join(__dirname, 'config-private.json');
 
 let oauth2Client;
 let tasksService;
+let calendarService;
 
-// Cơ Chế Lazy Load: Chỉ require thư viện khổng lồ 80MB khi thực sự cần gọi lệnh API
-// Điều này ngăn chặn sự nghẽn cổ chai CPU làm Giật Lag khung hình lúc người dùng gõ npm start
+// CÆ¡ Cháº¿ Lazy Load: Chá»‰ require thÆ° viá»‡n khá»•ng lá»“ 80MB khi thá»±c sá»± cáº§n gá»i lá»‡nh API
+// Äiá»u nÃ y ngÄƒn cháº·n sá»± ngháº½n cá»• chai CPU lÃ m Giáº­t Lag khung hÃ¬nh lÃºc ngÆ°á»i dÃ¹ng gÃµ npm start
 function initGoogle() {
     if (!oauth2Client) {
-        // Tải bí mật từ file private (đã được gitignore)
+        // Táº£i bÃ­ máº­t tá»« file private (Ä‘Ã£ Ä‘Æ°á»£c gitignore)
         if (fs.existsSync(SECRETS_PATH)) {
             try {
                 const secrets = JSON.parse(fs.readFileSync(SECRETS_PATH, 'utf8'));
                 CLIENT_ID = secrets.GOOGLE_CLIENT_ID;
                 CLIENT_SECRET = secrets.GOOGLE_CLIENT_SECRET;
             } catch (e) {
-                console.error("Lỗi đọc config-private.json:", e);
+                console.error("Lá»—i Ä‘á»c config-private.json:", e);
             }
         }
 
         const { google } = require('googleapis');
         oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
         tasksService = google.tasks({ version: 'v1', auth: oauth2Client });
+        calendarService = google.calendar({ version: 'v3', auth: oauth2Client });
     }
 }
 
@@ -53,17 +58,17 @@ async function authenticate() {
             prompt: 'consent' 
         });
 
-        // Hiện cửa sổ Login Siêu cấp lồng vào Electron
+        // Hiá»‡n cá»­a sá»• Login SiÃªu cáº¥p lá»“ng vÃ o Electron
         const authWindow = new BrowserWindow({
             width: 500, height: 600,
             webPreferences: { nodeIntegration: false, contextIsolation: true },
-            alwaysOnTop: true, title: "Liên kết Google Tasks To-Do"
+            alwaysOnTop: true, title: "LiÃªn káº¿t Google Tasks To-Do"
         });
         
         authWindow.setMenu(null);
         authWindow.loadURL(authUrl);
 
-        // Bắt Request Redirect ngay khi OAuth đồng ý, khỏi cần chạy Local Server!
+        // Báº¯t Request Redirect ngay khi OAuth Ä‘á»“ng Ã½, khá»i cáº§n cháº¡y Local Server!
         authWindow.webContents.on('will-redirect', async (event, url) => {
             if (url.startsWith(REDIRECT_URI)) {
                 event.preventDefault();
@@ -91,39 +96,58 @@ async function authenticate() {
     });
 }
 
-// Hàm hỗ trợ đồng bộ Đám mây
-async function getTasks() {
+// HÃ m há»— trá»£ Ä‘á»“ng bá»™ ÄÃ¡m mÃ¢y
+async function getTaskLists() {
+    initGoogle();
+    try {
+        const res = await tasksService.tasklists.list({ maxResults: 50 });
+        return res.data.items || [];
+    } catch(e) { return []; }
+}
+
+async function addTaskList(title) {
+    initGoogle();
+    try {
+        const res = await tasksService.tasklists.insert({
+            requestBody: { title: title }
+        });
+        return res.data.id;
+    } catch(e) { console.error('Add TaskList error', e); return null; }
+}
+
+async function getTasks(listId = '@default') {
+
     initGoogle();
     try {
         const res = await tasksService.tasks.list({
-            tasklist: '@default', // List gốc mặc định của tài khoản
-            showCompleted: false,
+            tasklist: listId, // List gá»‘c máº·c Ä‘á»‹nh cá»§a tÃ i khoáº£n
+            showCompleted: true, showHidden: true,
             maxResults: 50
         });
         const allItems = res.data.items || [];
-        // GIẤU NHIỆM VỤ LƯU ĐÁM MÂY ĐI, KHÔNG CHO TRẢ VỀ FRONT-END
+        // GIáº¤U NHIá»†M Vá»¤ LÆ¯U ÄÃM MÃ‚Y ÄI, KHÃ”NG CHO TRáº¢ Vá»€ FRONT-END
         return allItems.filter(t => t.title !== '[RPG_CLOUD_SAVE_DO_NOT_DELETE]');
     } catch (e) {
         return [];
     }
 }
 
-async function addTask(title) {
+async function addTask(title, listId = '@default') {
     initGoogle();
     try {
         const res = await tasksService.tasks.insert({
-            tasklist: '@default',
+            tasklist: listId,
             requestBody: { title: title }
         });
         return res.data;
     } catch(e) { return null; }
 }
 
-async function completeTask(taskId) {
+async function completeTask(taskId, listId = '@default') {
     initGoogle();
     try {
         await tasksService.tasks.patch({
-            tasklist: '@default',
+            tasklist: listId,
             task: taskId,
             requestBody: { status: 'completed' }
         });
@@ -131,18 +155,18 @@ async function completeTask(taskId) {
     } catch(e) { return false; }
 }
 
-async function removeTask(taskId) {
+async function removeTask(taskId, listId = '@default') {
     initGoogle();
     try {
         await tasksService.tasks.delete({
-            tasklist: '@default', task: taskId
+            tasklist: listId, task: taskId
         });
         return true;
     } catch(e) { return false; }
 }
 
-// ================= HỆ THỐNG ĐỒNG BỘ ĐÁM MÂY (RPG CLOUD SAVE) =================
-// Lưu lợi dụng Notes của một Google Task ẩn tên: [RPG_CLOUD_SAVE]
+// ================= Há»† THá»NG Äá»’NG Bá»˜ ÄÃM MÃ‚Y (RPG CLOUD SAVE) =================
+// LÆ°u lá»£i dá»¥ng Notes cá»§a má»™t Google Task áº©n tÃªn: [RPG_CLOUD_SAVE]
 async function findCloudSaveTask() {
     initGoogle();
     const res = await tasksService.tasks.list({
@@ -179,7 +203,7 @@ async function backupRPG(dataJson) {
             });
         }
         return true;
-    } catch (e) { console.error('Lỗi backup mây:', e); return false; }
+    } catch (e) { console.error('Lá»—i backup mÃ¢y:', e); return false; }
 }
 
 async function restoreRPG() {
@@ -188,10 +212,71 @@ async function restoreRPG() {
         if (existing && existing.notes) {
             return existing.notes;
         }
-    } catch(e) { console.error('Lỗi lấy backup mây:', e); }
+    } catch(e) { console.error('Lá»—i láº¥y backup mÃ¢y:', e); }
     return null;
 }
 // ==============================================================================
 
-module.exports = { authenticate, getTasks, addTask, completeTask, removeTask, backupRPG, restoreRPG };
+
+async function updateTaskStatus(listId, taskId, status) {
+    initGoogle();
+    try {
+        await tasksService.tasks.patch({
+            tasklist: listId, 
+            task: taskId,
+            requestBody: { status: status }
+        });
+        return true;
+    } catch(e) { console.log(e); return false; }
+}
+
+async function removeTaskList(listId) {
+    initGoogle();
+    try {
+        await tasksService.tasklists.delete({ tasklist: listId });
+        return true;
+    } catch(e) { console.error(e); return false; }
+}
+
+async function getCalendarEvents(viewType = 'day') {
+    initGoogle();
+    try {
+        const now = new Date();
+        let timeMin = new Date(now);
+        let timeMax = new Date(now);
+        
+        // Zero out time for boundary calculations (optional, but good for logical days)
+        timeMin.setHours(0, 0, 0, 0);
+        
+        if (viewType === 'day') {
+            timeMax.setDate(timeMin.getDate() + 1);
+            timeMax.setHours(0, 0, 0, 0);
+        } else if (viewType === 'week') {
+            timeMax.setDate(timeMin.getDate() + 7);
+            timeMax.setHours(0, 0, 0, 0);
+        } else if (viewType === 'month') {
+            timeMax.setMonth(timeMin.getMonth() + 1);
+            timeMax.setHours(0, 0, 0, 0);
+        } else if (viewType === 'year') {
+            timeMax.setFullYear(timeMin.getFullYear() + 1);
+            timeMax.setHours(0, 0, 0, 0);
+        }
+
+        const res = await calendarService.events.list({
+            calendarId: 'primary',
+            timeMin: Math.max(now.getTime(), timeMin.getTime()) === now.getTime() ? now.toISOString() : timeMin.toISOString(),
+            timeMax: timeMax.toISOString(),
+            maxResults: 100,
+            singleEvents: true,
+            orderBy: 'startTime',
+        });
+        return res.data.items || [];
+    } catch (e) {
+        console.error('Lỗi lấy lịch Google:', e);
+        return [];
+    }
+}
+
+module.exports = { removeTaskList, updateTaskStatus, authenticate, getTaskLists, getTasks, addTask, completeTask, removeTask, backupRPG, restoreRPG, addTaskList, getCalendarEvents };
+
 

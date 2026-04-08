@@ -1,19 +1,24 @@
 # 👾 Pixel Widget Ecosystem 🐰
 
-**Pixel Widget Ecosystem** là một bộ tiện ích máy tính (Desktop Widgets) phong cách **8-bit Pixel Art** lấy cảm hứng từ thế giới RPG và Lofi. Ứng dụng mang đến sự kết hợp giữa tính hữu dụng và tính giải trí ngay trên màn hình desktop của bạn.
+**Pixel Widget Ecosystem v1.5.0** là bộ tiện ích máy tính (Desktop Widget) phong cách **8-bit Pixel Art** lấy cảm hứng từ thế giới RPG và Lofi. Ứng dụng mang đến sự kết hợp giữa tính hữu dụng và tính giải trí ngay trên màn hình desktop của bạn.
 
 ---
 
-## ✨ Tính năng chính
+## ✨ Tính năng chính (Cập nhật v1.5.0)
 
 ### 🌤️ Widget Thời Tiết (Weather)
 *   Hiển thị thời tiết thực tế tại mọi vị trí thông qua bản đồ.
+
+### 📅 Widget Lịch (Calendar)
+*   **MỚI**: Thiết kế chuẩn 8-bit, xem ngày tháng nhanh gọn.
+*   Đồng bộ liền mạch với giao diện của toàn bộ hệ sinh thái.
 
 ### 🪴 Chậu Cây Lofi (Pomodoro Focus)
 *   Đồng hồ tập trung Pomodoro tích hợp nghe nhạc Lofi từ YouTube.
 *   Theo dõi sự sống của cây xanh trong suốt quá trình bạn làm việc.
 
-### 🍱 Hệ thống Tinh Linh Thú (RPG Pet)
+### 🐱 Hệ thống Tinh Linh Thú (RPG Pet) - Nâng cấp lớn
+*   **MỚI**: Cải tiến logic tương tác, thao tác vuốt/kéo mượt mà.
 *   **Dashboard Tinh Linh**: Nuôi dưỡng, cho thú cưng ăn bằng thực phẩm mua từ Shop.
 *   **Tiến hóa RPG**: Tăng cấp (Level), tích lũy EXP và sức mạnh (Buff).
 *   **Shop & Inventory**: Mua sắm trang bị và quản lý túi đồ pixel.
@@ -23,6 +28,7 @@
 *   Quản lý danh sách công việc (To-do list) ngay tại chỗ.
 
 ### ⚡ Thanh Sidebar Thông Minh (Smart Handle)
+*   **MỚI**: Sửa triệt để lỗi cướp focus (blur) làm chớp tắt cửa sổ, mang lại cảm giác mượt như app Native Window.
 *   Tai thỏ (Handle) nhỏ gọn để đóng/mở nhanh bộ điều khiển.
 *   Chế độ "Găm Lề" (Edge docking) giúp tiết kiệm diện tích màn hình.
 
@@ -32,15 +38,18 @@
 
 ### Dành cho người dùng:
 1.  Vào mục **[Releases](https://github.com/trungdzid3/widget/releases)**.
-2.  Tải về file **`Pixel.Widget.Setup.1.1.1.exe`**.
+2.  Tải về bản phát hành mới nhất (v1.5.0).
 3.  Chạy bộ cài đặt và thưởng thức hệ sinh thái ngay trên màn hình của bạn!
 
 ### Dành cho nhà phát triển:
 Nếu bạn muốn tự build hoặc chỉnh sửa mã nguồn:
-1.  Clone repo: `git clone https://github.com/trungdzid3/widget.git`.
-2.  Cài đặt node_modules: `npm install`.
-3.  Chạy ứng dụng: `npm start`.
-4.  Đóng gói ứng dụng: `npm run build`.
+1.  Clone repo: git clone https://github.com/trungdzid3/widget.git
+2.  Cài đặt node_modules: 
+pm install
+3.  Chạy ứng dụng: 
+pm start
+4.  Đóng gói ứng dụng: 
+pm run build
 
 ---
 
@@ -53,7 +62,7 @@ Nếu bạn muốn tự build hoặc chỉnh sửa mã nguồn:
 ---
 
 ## 🔒 Bảo mật
-Mọi thông tin xác thực Google được lưu trữ nội bộ tại máy người dùng và mã bí mật (Secrets) được quản lý thông qua tệp `config-private.json` (được bảo vệ bởi Git) để đảm bảo an toàn tuyệt đối cho người dùng.
+Mọi thông tin xác thực Google được lưu trữ nội bộ tại máy người dùng và mã bí mật (Secrets) được quản lý thông qua tệp "config-private.json" (được bảo vệ bởi Git ignore) để đảm bảo an toàn tuyệt đối cho người dùng.
 
 ---
-*Phát triển bởi trungdzid3 với sự hỗ trợ từ Antigravity AI.* 🎮💖
+*Phát triển bởi trungdzid3 với sự hỗ trợ từ AI.* 🎮💖
