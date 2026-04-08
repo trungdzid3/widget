@@ -287,8 +287,7 @@ let lastOpened=0; function openSidebar() { lastOpened=Date.now();
     ipcMain.on('open-sidebar', openSidebar);
     ipcMain.on('close-sidebar', closeSidebar);
     launcherWin.on('blur', () => { 
-        if (Date.now() - lastOpened > 300) { 
-            closeSidebar(); 
+        if (Date.now() - lastOpened > 800) {
         } 
     });
     
@@ -555,9 +554,7 @@ if (!gotTheLock) {
 
 app.on('second-instance', (event, commandLine, workingDirectory) => {
     if (launcherWin) {
-        launcherWin.setOpacity(1);
-        launcherWin.setIgnoreMouseEvents(false);
-        launcherWin.focus();
+        openSidebar();
     }
 });
 
@@ -611,35 +608,12 @@ app.whenReady().then(() => {
     updateTrayMenu();
 
       tray.on('right-click', () => { if (tray.contextMenu) tray.popUpContextMenu(tray.contextMenu); });
-        tray.on('click', () => {
-            if (launcherWin) {
-                if (launcherWin.isMinimized()) launcherWin.restore();
-                launcherWin.setOpacity(1);
-                launcherWin.setAlwaysOnTop(true, 'screen-saver');
-                launcherWin.setIgnoreMouseEvents(false);
-                launcherWin.showInactive();
-                launcherWin.focus();
-                if (handleWin) {
-                    handleWin.setOpacity(0);
-                    handleWin.setIgnoreMouseEvents(true);
-                }
-            }
-        });
-        tray.on('double-click', () => {
-          if (launcherWin) {
-              if (launcherWin.isMinimized()) launcherWin.restore();
-              launcherWin.setOpacity(1);
-              launcherWin.setAlwaysOnTop(true, 'screen-saver');
-              launcherWin.setIgnoreMouseEvents(false);
-              launcherWin.showInactive();
-              launcherWin.focus();
-              if (handleWin) {
-                  handleWin.setOpacity(0);
-                  handleWin.setIgnoreMouseEvents(true);
-              }
-          }
+      tray.on('click', () => {
+          if (launcherWin) openSidebar();
       });
-
+      tray.on('double-click', () => {
+          if (launcherWin) openSidebar();
+      });
       // UU TI?N S? 2: Khi Giao di?n Graphic d? k?t xu?t xong xu?i, b?t d?u ch?c Cloud l?y d? li?u
     // Tr? ho?n k?o d?i th?nh G?n 3 gi?y (2500ms) d? H? di?u h?nh d?p xong Khung C?a S?, Tuy?t d?i mu?t m?
     setTimeout(() => {
