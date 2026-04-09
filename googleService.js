@@ -1,4 +1,4 @@
-﻿const { BrowserWindow } = require('electron');
+const { BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -35,6 +35,14 @@ function initGoogle() {
 
         const { google } = require('googleapis');
         oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+
+        if (fs.existsSync(TOKEN_PATH)) {
+            try {
+                const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
+                oauth2Client.setCredentials(token);
+            } catch (err) {}
+        }
+
         tasksService = google.tasks({ version: 'v1', auth: oauth2Client });
         calendarService = google.calendar({ version: 'v3', auth: oauth2Client });
     }
@@ -96,9 +104,10 @@ async function authenticate() {
     });
 }
 
-// HÃ m há»— trá»£ Ä‘á»“ng bá»™ ÄÃ¡m mÃ¢y
+// Hàm hỗ trợ đồng bộ Đám mây
 async function getTaskLists() {
     initGoogle();
+    if (!oauth2Client.credentials || Object.keys(oauth2Client.credentials).length === 0) return [];
     try {
         const res = await tasksService.tasklists.list({ maxResults: 50 });
         return res.data.items || [];
@@ -112,12 +121,13 @@ async function addTaskList(title) {
             requestBody: { title: title }
         });
         return res.data.id;
-    } catch(e) { console.error('Add TaskList error', e); return null; }
+    } catch(e) { console.error('Add TaskList error', e.message || ''); return null; }
 }
 
 async function getTasks(listId = '@default') {
 
     initGoogle();
+    if (!oauth2Client.credentials || Object.keys(oauth2Client.credentials).length === 0) return [];
     try {
         const res = await tasksService.tasks.list({
             tasklist: listId, // List gá»‘c máº·c Ä‘á»‹nh cá»§a tÃ i khoáº£n
@@ -203,7 +213,7 @@ async function backupRPG(dataJson) {
             });
         }
         return true;
-    } catch (e) { console.error('Lá»—i backup mÃ¢y:', e); return false; }
+    } catch (e) { console.error('Lỗi backup mây:', e.message || ''); return false; }
 }
 
 async function restoreRPG() {
@@ -212,7 +222,7 @@ async function restoreRPG() {
         if (existing && existing.notes) {
             return existing.notes;
         }
-    } catch(e) { console.error('Lá»—i láº¥y backup mÃ¢y:', e); }
+    } catch(e) { console.error('Lỗi lấy backup mây:', e.message || ''); }
     return null;
 }
 // ==============================================================================
@@ -227,7 +237,7 @@ async function updateTaskStatus(listId, taskId, status) {
             requestBody: { status: status }
         });
         return true;
-    } catch(e) { console.log(e); return false; }
+    } catch(e) { console.log('Lỗi Google Tasks (Log):', e.message || ''); return false; }
 }
 
 async function removeTaskList(listId) {
@@ -235,11 +245,12 @@ async function removeTaskList(listId) {
     try {
         await tasksService.tasklists.delete({ tasklist: listId });
         return true;
-    } catch(e) { console.error(e); return false; }
+    } catch(e) { console.error('Lỗi Google Tasks:', e.message || ''); return false; }
 }
 
 async function getCalendarEvents(viewType = 'day') {
     initGoogle();
+    if (!oauth2Client.credentials || Object.keys(oauth2Client.credentials).length === 0) return [];
     try {
         const now = new Date();
         let timeMin = new Date(now);
@@ -272,7 +283,9 @@ async function getCalendarEvents(viewType = 'day') {
         });
         return res.data.items || [];
     } catch (e) {
-        console.error('Lỗi lấy lịch Google:', e);
+        if (!e.message.includes('No access, refresh token')) {
+            console.error('Lỗi lấy lịch Google:', e.message || '');
+        }
         return [];
     }
 }

@@ -1,27 +1,27 @@
-# 👾 Pixel Widget Ecosystem 🐰
+# 👾 Pixel Desktop Ecosystem 🐰
 
-**Pixel Widget Ecosystem v1.5.0** là bộ tiện ích máy tính (Desktop Widget) phong cách **8-bit Pixel Art** lấy cảm hứng từ thế giới RPG và Lofi. Ứng dụng mang đến sự kết hợp giữa tính hữu dụng và tính giải trí ngay trên màn hình desktop của bạn.
+**Pixel Desktop Ecosystem** là bộ tiện ích máy tính (Desktop Widget) phong cách **8-bit Pixel Art** lấy cảm hứng từ thế giới RPG và Lofi. Ứng dụng mang đến sự kết hợp giữa tính hữu dụng và trải nghiệm nuôi Pet ngay trên màn hình desktop của bạn.
 
 ---
 
-## ✨ Tính năng chính (Cập nhật v1.5.0)
+## ✨ Tính năng chính
 
 ### 🌤️ Widget Thời Tiết (Weather)
 *   Hiển thị thời tiết thực tế tại mọi vị trí thông qua bản đồ.
 
 ### 📅 Widget Lịch (Calendar)
-*   **MỚI**: Thiết kế chuẩn 8-bit, xem ngày tháng nhanh gọn.
+*   Thiết kế chuẩn 8-bit, xem ngày tháng nhanh gọn.
 *   Đồng bộ liền mạch với giao diện của toàn bộ hệ sinh thái.
 
 ### 🪴 Chậu Cây Lofi (Pomodoro Focus)
 *   Đồng hồ tập trung Pomodoro tích hợp nghe nhạc Lofi từ YouTube.
 *   Theo dõi sự sống của cây xanh trong suốt quá trình bạn làm việc.
 
-### 🐱 Hệ thống Tinh Linh Thú (RPG Pet) - Nâng cấp lớn
-*   **MỚI**: Cải tiến logic tương tác, thao tác vuốt/kéo mượt mà.
-*   **Dashboard Tinh Linh**: Nuôi dưỡng, cho thú cưng ăn bằng thực phẩm mua từ Shop.
+### 🐱 Hệ thống Pet (RPG Pet) - Nuôi Thú Ảo
+*   **MỚI**: Nuôi dưỡng và tương tác với Pet ngay trên desktop.
+*   **Dashboard**: Cho Pet ăn bằng thực phẩm mua từ Shop.
 *   **Tiến hóa RPG**: Tăng cấp (Level), tích lũy EXP và sức mạnh (Buff).
-*   **Shop & Inventory**: Mua sắm trang bị và quản lý túi đồ pixel.
+*   **Shop & Túi Đồ**: Mua sắm trang bị và quản lý vật phẩm pixel.
 
 ### 📝 Sổ Nhiệm Vụ (Google Tasks Sync)
 *   Đồng bộ hóa nhiệm vụ trực tiếp với **Google Tasks**.

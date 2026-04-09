@@ -152,6 +152,7 @@ function saveState(s) {
 }
 
 let handleWin, launcherWin, weatherWin, noteWin, plantWin, petWin, petWalkWin, calendarWin, tray;
+let openSidebar, closeSidebar;
 let mState = getState();
 // Migrate old configs safely
 if(!mState.active) mState.active = { weather: false, note: false, plant: false, pet: false, calendar: false };
@@ -254,13 +255,13 @@ function createWindows() {
     launcherWin.setIgnoreMouseEvents(true); // Kho? Tuong t?c chu?t khi dang T?ng h?nh
     launcherWin.setAlwaysOnTop(true, 'screen-saver');
 
-let lastOpened=0; function openSidebar() { lastOpened=Date.now(); 
+let lastOpened=0; openSidebar = function() { lastOpened=Date.now(); 
         if (launcherWin.isMinimized()) launcherWin.restore();
         launcherWin.setOpacity(1); // Triệu hồi bằng GPU cực muợt
         launcherWin.setAlwaysOnTop(true, 'screen-saver'); // Chống mất ưu tiên 
         launcherWin.setIgnoreMouseEvents(false);
         launcherWin.show();
-        setTimeout(() => launcherWin.focus(), 150); // Delay lấy focus để tránh bị OS giật ngược
+        setTimeout(() => launcherWin.focus(), 50); // Delay lấy focus ngắn lại
         launcherWin.webContents.send('play-open');
 
         if (handleWin) {
@@ -269,12 +270,13 @@ let lastOpened=0; function openSidebar() { lastOpened=Date.now();
         }
     }
 
-    function closeSidebar() {
+    closeSidebar = function() {
         launcherWin.webContents.send('play-close');
         launcherWin.setIgnoreMouseEvents(true);
         setTimeout(() => {
             launcherWin.setOpacity(0);
-            if (handleWin) {
+            launcherWin.hide(); // Ẩn hoàn toàn để loại khỏi vòng lặp Focus của OS
+            if (handleWin && !handleWin.isDestroyed()) {
                 if (handleWin.isMinimized()) handleWin.restore();
                 handleWin.setOpacity(1);
                 handleWin.setAlwaysOnTop(true, 'screen-saver');
@@ -287,7 +289,8 @@ let lastOpened=0; function openSidebar() { lastOpened=Date.now();
     ipcMain.on('open-sidebar', openSidebar);
     ipcMain.on('close-sidebar', closeSidebar);
     launcherWin.on('blur', () => { 
-        if (Date.now() - lastOpened > 800) {
+        if (Date.now() - lastOpened > 200) {
+            closeSidebar();
         } 
     });
     

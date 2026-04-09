@@ -1,7 +1,7 @@
 {
   "name": "pixel-weather-widget",
-  "version": "1.5.2",
-  "description": "Pixel Art Desktop Widget Ecosystem",
+  "version": "1.6.0",
+  "description": "A retro pixel art desktop widget.",
   "author": "trungdzid3",
   "main": "main.js",
   "scripts": {

@@ -1,0 +1,56 @@
+            { name: 'Mèo Con',         sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: { id:'cat_1', name:'Vuốt Ve Thần Kỳ',    desc:'Nhận 15 EXP miễn phí!',             cd: 60  } },
+            { name: 'Mèo Tinh Nghịch', sprite: 's3', anim: 'anim-bounce', reqLv: 10, skill: { id:'cat_2', name:'Nước Mắt Mèo',        desc:'Hồi 40 EXP từ hư không!',           cd: 120 } },
+            { name: 'Sư Tử Chúa',      sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: { id:'cat_3', name:'Tiếng Gầm Vũ Trụ',    desc:'x2 EXP trong 60 giây!',             cd: 300 } }
+            { name: 'Rồng Xanh',   sprite: 's3', anim: 'anim-float',  reqLv: 10, skill: { id:'drg_2', name:'Phun Lửa',         desc:'Thêm 60 EXP vào kho Pet!',           cd: 180 } },
+            { name: 'Thần Rồng',   sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: { id:'drg_3', name:'Bão Lửa Thiên Hà', desc:'x3 EXP trong 30 giây!',              cd: 600 } }
+            { name: 'Thỏ Con',          sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: { id:'bny_1', name:'Nhảy Bông Bông',   desc:'Nhận 10 EXP + giảm phí Cho Ăn!',    cd: 60  } },
+            { name: 'Thỏ Ánh Trăng',   sprite: 's3', anim: 'anim-float',  reqLv: 10, skill: { id:'bny_2', name:'Trăng Mọc',        desc:'Hồi 50 EXP tức thì!',               cd: 150 } },
+            { name: 'Ngọc Thỏ',        sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: { id:'bny_3', name:'Bạch Ngọc Hào Quang','desc':'x2 EXP trong 120 giây!',          cd: 600 } }
+            { name: 'Kén Ngủ',      sprite: 's3', anim: 'anim-egg',    reqLv: 10, skill: { id:'bfl_2', name:'Ngủ Đông Phục Sinh','desc':'Hồi toàn bộ EXP chi phí hôm nay!', cd: 300 } },
+            { name: 'Bướm Tiên',    sprite: 's4', anim: 'anim-float',  reqLv: 25, skill: { id:'bfl_3', name:'Bụi Tiên Huyền Bí', desc:'x2 EXP + Cho Ăn miễn phí 60 giây!', cd: 600 } }
+try { myPet = JSON.parse(localStorage.getItem('rpg_pet')) || { lv: 1, exp: 0, species: null }; }
+catch(e) { myPet = { lv: 1, exp: 0, species: null }; }
+if (typeof myPet !== 'object' || myPet === null) myPet = { lv: 1, exp: 0, species: null };
+if (isNaN(myPet.exp) || myPet.exp == null) myPet.exp = 0;
+if (typeof myPet.exp === 'string') myPet.exp = Number(myPet.exp) || 0;
+const expBar      = document.getElementById('exp-bar');
+const expCurEl    = document.getElementById('pet-exp-cur');
+const expReqEl    = document.getElementById('pet-exp-req');
+    renderPet();
+    renderPet();
+function renderPet() { try {
+    while (myPet.exp >= getPetExpReq(myPet.lv)) {
+        myPet.exp -= getPetExpReq(myPet.lv);
+    // EXP Bar
+    expBar.style.width = Math.min(100, Math.floor(myPet.exp / needed * 100)) + '%';
+    expCurEl.innerText = Math.floor(myPet.exp);
+    expReqEl.innerText = needed;
+window.useItem = (id, expVal, name) => {
+    const mult = getActiveBuff('exp_x3') || getActiveBuff('exp_x2') || 1;
+    myPet.exp += (Number(expVal) || 15) * (Number(mult) || 1);
+    showToast(`Đã cho ăn ${name}! +${expVal * mult} EXP`);
+    renderPet();
+    const mult = getActiveBuff('exp_x3') || getActiveBuff('exp_x2') || 1;
+                myPet.exp = 0;
+                myPet.exp = 0;
+        myPet.exp += randXP * mult;
+        showToast(`🎁 Hộp Bí Ẩn! +${randXP} EXP!`);
+    renderPet();
+            myPet.exp = Number(savedData.exp) || 0;
+            myPet.exp = 0;
+        renderPet();
+        allPets[myPet.species] = { lv: myPet.lv, exp: myPet.exp };
+        case 'cat_1': RPG.state.currentXP += 15; RPG.save(); showToast('😸 +15 EXP Player!'); break;
+        case 'cat_2': RPG.state.currentXP += 40; RPG.save(); showToast('😿 +40 EXP Player!'); break;
+        case 'cat_3': setBuff('exp_x2', 2, 60); showToast('🦁 x2 EXP 60s!'); break;
+        case 'drg_2': myPet.exp += 60; showToast('🐲 Pet +60 EXP!'); break;
+        case 'drg_3': setBuff('exp_x3', 3, 30); showToast('🐉 x3 EXP World!'); break;
+        case 'bny_1': RPG.state.currentXP += 10; RPG.save(); setBuff('half_feed', true, 20); showToast('🐇 +10 EXP & Giảm phí!'); break;
+        case 'bny_2': RPG.state.currentXP += 50; RPG.save(); showToast('🐰 +50 EXP Player!'); break;
+        case 'bny_3': setBuff('exp_x2', 2, 120); showToast('🌙 x2 EXP 120s!'); break;
+        case 'bfl_3': setBuff('exp_x2', 2, 60); setBuff('free_feed', true, 60); showToast('🦋 God Mode 60s!'); break;
+    renderPet();
+        buffs[type] = { value, expires: Date.now() + durationSec * 1000 };
+        if (!b || Date.now() > b.expires) return null;
+        const left = Math.ceil((b.expires - now) / 1000);
+            const labels = { exp_x2:'⚡x2', exp_x3:'⚡x3', half_feed:'💰-50%', free_feed:'🆓Free' };

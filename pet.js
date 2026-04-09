@@ -7,9 +7,9 @@ const PET_SPECIES = {
         themeColor: '#ff9ecd',
         stages: [
             { name: 'Trứng Mèo',      sprite: 's1', anim: 'anim-egg',    reqLv: 1,  skill: null },
-            { name: 'Mèo Con',         sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: { id:'cat_1', name:'Vuốt Ve Thần Kỳ',    desc:'Nhận 15 EXP miễn phí!',             cd: 60  } },
-            { name: 'Mèo Tinh Nghịch', sprite: 's3', anim: 'anim-bounce', reqLv: 10, skill: { id:'cat_2', name:'Nước Mắt Mèo',        desc:'Hồi 40 EXP từ hư không!',           cd: 120 } },
-            { name: 'Sư Tử Chúa',      sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: { id:'cat_3', name:'Tiếng Gầm Vũ Trụ',    desc:'x2 EXP trong 60 giây!',             cd: 300 } }
+            { name: 'Mèo Con',         sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: null },
+            { name: 'Mèo Tinh Nghịch', sprite: 's3', anim: 'anim-bounce', reqLv: 10, skill: null },
+            { name: 'Sư Tử Chúa',      sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: null }
         ]
     },
     dragon: {
@@ -17,9 +17,9 @@ const PET_SPECIES = {
         themeColor: '#98e898',
         stages: [
             { name: 'Trứng Rồng',  sprite: 's1', anim: 'anim-egg',    reqLv: 1,  skill: null },
-            { name: 'Thằn Lằn',    sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: { id:'drg_1', name:'Cắn Đuôi',         desc:'Giảm 50% phí Cho Ăn trong 30 giây!', cd: 90  } },
-            { name: 'Rồng Xanh',   sprite: 's3', anim: 'anim-float',  reqLv: 10, skill: { id:'drg_2', name:'Phun Lửa',         desc:'Thêm 60 EXP vào kho Pet!',           cd: 180 } },
-            { name: 'Thần Rồng',   sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: { id:'drg_3', name:'Bão Lửa Thiên Hà', desc:'x3 EXP trong 30 giây!',              cd: 600 } }
+            { name: 'Thằn Lằn',    sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: null },
+            { name: 'Rồng Xanh',   sprite: 's3', anim: 'anim-float',  reqLv: 10, skill: null },
+            { name: 'Thần Rồng',   sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: null }
         ]
     },
     bunny: {
@@ -27,19 +27,19 @@ const PET_SPECIES = {
         themeColor: '#ffe4b5',
         stages: [
             { name: 'Trứng Thỏ',      sprite: 's1', anim: 'anim-egg',    reqLv: 1,  skill: null },
-            { name: 'Thỏ Con',          sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: { id:'bny_1', name:'Nhảy Bông Bông',   desc:'Nhận 10 EXP + giảm phí Cho Ăn!',    cd: 60  } },
-            { name: 'Thỏ Ánh Trăng',   sprite: 's3', anim: 'anim-float',  reqLv: 10, skill: { id:'bny_2', name:'Trăng Mọc',        desc:'Hồi 50 EXP tức thì!',               cd: 150 } },
-            { name: 'Ngọc Thỏ',        sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: { id:'bny_3', name:'Bạch Ngọc Hào Quang','desc':'x2 EXP trong 120 giây!',          cd: 600 } }
+            { name: 'Thỏ Con',          sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: null },
+            { name: 'Thỏ Ánh Trăng',   sprite: 's3', anim: 'anim-float',  reqLv: 10, skill: null },
+            { name: 'Ngọc Thỏ',        sprite: 's4', anim: 'anim-pulse',  reqLv: 25, skill: null }
         ]
     },
     mascot: {
         label: "Mascot",
         themeColor: '#dda0dd',
         stages: [
-            { name: 'Trứng Bướm',   sprite: 's1', anim: 'anim-egg',    reqLv: 1,  skill: null },
-            { name: 'Sâu Bướm',     sprite: 's2', anim: 'anim-bounce', reqLv: 3,  skill: { id:'bfl_1', name:'Tơ Tiên',          desc:'Miễn phí Cho Ăn trong 30 giây!',     cd: 120 } },
-            { name: 'Kén Ngủ',      sprite: 's3', anim: 'anim-egg',    reqLv: 10, skill: { id:'bfl_2', name:'Ngủ Đông Phục Sinh','desc':'Hồi toàn bộ EXP chi phí hôm nay!', cd: 300 } },
-            { name: 'Bướm Tiên',    sprite: 's4', anim: 'anim-float',  reqLv: 25, skill: { id:'bfl_3', name:'Bụi Tiên Huyền Bí', desc:'x2 EXP + Cho Ăn miễn phí 60 giây!', cd: 600 } }
+            { name: 'Trứng Mascot', sprite: 's1', anim: 'anim-egg', reqLv: 1, skill: null },
+            { name: 'Mascot Nhỏ', sprite: 's2', anim: 'anim-bounce', reqLv: 3, skill: null },
+            { name: 'Mascot Lớn', sprite: 's3', anim: 'anim-float', reqLv: 10, skill: null },
+            { name: 'Thần Mascot', sprite: 's4', anim: 'anim-pulse', reqLv: 25, skill: null }
         ]
     }
 };
@@ -52,8 +52,9 @@ if (typeof process !== 'undefined') {
 
 // ===== DỮ LIỆU =====
 RPG.init();
-let myPet  = JSON.parse(localStorage.getItem('rpg_pet'))    || { lv: 1, exp: 0, species: null };
-let skillCooldowns = JSON.parse(localStorage.getItem('rpg_pet_cd')) || {};
+let myPet = JSON.parse(localStorage.getItem('rpg_pet')) || { lv: 1, exp: 0, species: null };
+// Đã loại bỏ bướm hoàn toàn theo yêu cầu
+
 let petInteractionState = 'idle'; // Tránh lỗi biến TDZ bị gọi sớm
 let nextActionTime = Date.now() + 3000;
 
@@ -63,7 +64,6 @@ const nameEl      = document.getElementById('pet-name');
 const lvEl        = document.getElementById('pet-lv');
 const feedBtn     = document.getElementById('feed-btn');
 const shopBtn     = document.getElementById('shop-btn');
-const skillBtn    = document.getElementById('skill-btn');
 const expBar      = document.getElementById('exp-bar');
 const expCurEl    = document.getElementById('pet-exp-cur');
 const expReqEl    = document.getElementById('pet-exp-req');
@@ -147,51 +147,96 @@ function setPetState(state) {
 
 
 function updateSpriteClass() {
-    const spec = PET_SPECIES[myPet.species];
-    if (!spec) return;
+      const spec = PET_SPECIES[myPet.species];
+      if (!spec) return;
 
-    const stages = spec.stages;
-    let stage = stages[myPet.lv >= stages[1].reqLv ? 1 : 0];
+      const stages = spec.stages;
+      // Define stage by level. Since stage max index is stages.length - 1
+      let stageIndex = 0;
+      if (stages.length > 3 && myPet.lv >= stages[3].reqLv) stageIndex = 3;
+      else if (stages.length > 2 && myPet.lv >= stages[2].reqLv) stageIndex = 2;
+      else if (stages.length > 1 && myPet.lv >= stages[1].reqLv) stageIndex = 1;
+      
+      let stage = stages[stageIndex];
 
-    // Apply interaction and animation CSS classes
-    let baseCls = 'pet-sprite';
-    if (stage && stage.anim) baseCls += ' ' + stage.anim;
-    spriteEl.className = baseCls + (petInteractionState !== 'idle' ? ' interact-' + petInteractionState : '');
+      // Apply interaction and animation CSS classes
+      let baseCls = 'pet-sprite';
+      if (stage && stage.anim) baseCls += ' ' + stage.anim;
+      spriteEl.className = baseCls + (petInteractionState !== 'idle' ? ' interact-' + petInteractionState : '');
 
-    if (myPet.lv < stages[1].reqLv) {
-        spriteEl.innerHTML = "<div class='egg-inner' style='display:flex; justify-content:center; align-items:center; width:100%; height:100%; user-select:none;'>" + (myPet.species==="dragon"?"\uD83D\uDC09":myPet.species==="bunny"?"\uD83D\uDC30":myPet.species==="cat"?"\uD83D\uDC31":"\uD83D\uDC23") + "</div>";
+      // DẠNG 1: TRỨNG (Level < reqLv 1 - Tức level < 3)
+      if (myPet.lv < stages[1].reqLv) {
+        spriteEl.innerHTML = "<div class='egg-inner' style='display:flex; justify-content:center; align-items:center; width:100%; height:100%; user-select:none;'>🥚</div>";
         if (currentLottieAnim) { currentLottieAnim.destroy(); currentLottieAnim = null; }
         currentLottiePath = "";
+
+        const changeBtn=document.getElementById('change-species-btn');
+        if(changeBtn) changeBtn.style.display = myPet.lv === 1 ? 'flex' : 'none';
         return;
     }
+      
+      const changeBtn=document.getElementById('change-species-btn'); 
+      if(changeBtn) changeBtn.style.display = 'none';
 
-    function getRandomLottie() {
-        const path = require("path");
-        const fs = require("fs");
-        const petDir = path.join(__dirname, "assets", "pets", myPet.species);
-        if (!fs.existsSync(petDir)) return null;
-        const files = fs.readdirSync(petDir).filter(f => f.endsWith(".json"));
-        if (files.length === 0) return null;
-        return "assets/pets/" + myPet.species + "/" + files[Math.floor(Math.random() * files.length)];
-    }
+      // Function to look up files
+      function getRandomFile(exts) {
+          const path = require("path");
+          const fs = require("fs");
+          const extSet = Array.isArray(exts) ? exts : [exts];
+          const petDir = path.join(__dirname, "assets", "pets", myPet.species);
+          if (!fs.existsSync(petDir)) return null;
+          try {
+              const files = fs.readdirSync(petDir).filter(f => extSet.some(ext => f.toLowerCase().endsWith(ext)));
+              if (files.length === 0) return null;
+              return "assets/pets/" + myPet.species + "/" + files[Math.floor(Math.random() * files.length)];
+          } catch(e) { return null; }
+      }
 
-    let jsonPath = getRandomLottie();
-    if (!jsonPath) {
-        spriteEl.innerHTML = "<img src=\"Bunny_Sunny.png\" style=\"width:100%;height:100%;object-fit:contain;pointer-events:none;\">";
-        return;
-    }
-    if (currentLottiePath === jsonPath && currentLottieAnim) return;
-    currentLottiePath = jsonPath;
-    if (currentLottieAnim) {
-        currentLottieAnim.destroy();
-        currentLottieAnim = null;
-    }
-    spriteEl.innerHTML = "";
-    try {
-        currentLottieAnim = lottie.loadAnimation({ container: spriteEl, renderer: "svg", loop: true, autoplay: true, path: jsonPath });
-    } catch (e) { }
-}
-// ===== RENDER =====
+      // DẠNG 2: STICKER tĩnh (Tiến hoá đầu tiên)
+      if (stages.length > 2 && myPet.lv < stages[2].reqLv) {
+          if (currentLottieAnim) { currentLottieAnim.destroy(); currentLottieAnim = null; }
+          currentLottiePath = "";
+          
+          spriteEl.innerHTML = "<div class='egg-inner' style='display:flex; justify-content:center; align-items:center; width:100%; height:100%; user-select:none; font-size: 80px;'>🐣</div>";
+          return;
+      }
+
+      // DẠNG 3: LOTTIE (Tiến hoá cuối)
+      // Loại bỏ toàn bộ Animation CSS vì Lottie đã có sẵn chuyển động
+      spriteEl.className = 'pet-sprite';
+      
+      let jsonPath = getRandomFile(".json");
+      if (!jsonPath) {
+          // Dự phòng lottie (trả về mặt thỏ)
+          spriteEl.innerHTML = "<img src='Bunny_Sunny.png' style='width:100%;height:100%;object-fit:contain;pointer-events:none;'>";
+          return;
+      }
+
+      if (currentLottiePath === jsonPath && currentLottieAnim) return;
+      currentLottiePath = jsonPath;
+      if (currentLottieAnim) {
+          currentLottieAnim.destroy();
+          currentLottieAnim = null;
+      }
+      spriteEl.innerHTML = "";
+      
+      if (typeof window.lottie === 'undefined') {
+          console.warn("Lottie is not defined, falling back to emoji.");
+          spriteEl.innerHTML = "<div class='egg-inner' style='display:flex; justify-content:center; align-items:center; width:100%; height:100%; user-select:none; font-size:3.5rem;'>" + 
+              (myPet.species==="dragon"?"🐉":myPet.species==="bunny"?"🐇":myPet.species==="cat"?"🐈":"✨") + "</div>";
+          return;
+      }
+
+      currentLottieAnim = window.lottie.loadAnimation({
+          container: spriteEl,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          path: jsonPath
+      });
+  }
+
+  // ===== RENDER =====
 function renderPet() {
     if (!myPet.species) return;
     const spec = PET_SPECIES[myPet.species];
@@ -226,29 +271,9 @@ function renderPet() {
     expCurEl.innerText = Math.floor(myPet.exp);
     expReqEl.innerText = needed;
 
-    // Skill Button
-    const now = Date.now();
-    if (stage.skill) {
-        const cdLeft = Math.max(0, Math.ceil(((skillCooldowns[stage.skill.id] || 0) - now) / 1000));
-        skillBtn.disabled = cdLeft > 0;
-        skillBtn.classList.toggle('skill-locked', cdLeft > 0);
-        skillBtn.innerText = cdLeft > 0 ? cdLeft + 's' : '✨ ' + stage.skill.name;
-        skillBtn.title = stage.skill.name;
-        skillBtn.onclick = () => activateSkill(stage.skill);
-    } else {
-        skillBtn.disabled = true;
-        skillBtn.classList.add('skill-locked');
-        skillBtn.innerText = '✨ KN (Khóa)';
-        skillBtn.title = 'Kỹ Năng (Khóa)';
-        skillBtn.onclick = null;
-    }
-
     // Feed Button
     feedBtn.disabled = false;
 
-
-    renderBuffStatus();
-    changeBtn.style.display = myPet.lv === 1 ? 'flex' : 'none';
     savePet();
 }
 
@@ -354,14 +379,14 @@ window.buyShopItem = (id, cost, name, type, value) => {
     RPG.save();
     const mult = getActiveBuff('exp_x3') || getActiveBuff('exp_x2') || 1;
 
-    if (id === 'potion') {
-        skillCooldowns = {};
-        localStorage.setItem('rpg_pet_cd', '{}');
-        showToast('🧪 Thuốc Thần! Hồi phục kỹ năng!');
-    } else if (id === 'box') {
+    if (id === 'box') {
         const randXP = Math.floor(Math.random() * 90) + 10;
         myPet.exp += randXP * mult;
         showToast(`🎁 Hộp Bí Ẩn! +${randXP} EXP!`);
+    } else if (id === 'test_levelup') {
+        const req = getPetExpReq(myPet.lv) - myPet.exp;
+        myPet.exp += req;
+        showToast(`🌟 BÙM! Thú cưng vừa tiến hoá!`);
     }
 
     createHeart();
@@ -405,31 +430,6 @@ changeBtn.addEventListener('click', () => {
     showSpeciesPicker();
 });
 
-// ===== SKILLS =====
-function activateSkill(skill) {
-    const now = Date.now();
-    const cdLeft = (skillCooldowns[skill.id] || 0) - now;
-    if (cdLeft > 0) return;
-
-    switch (skill.id) {
-        case 'cat_1': RPG.state.currentXP += 15; RPG.save(); showToast('😸 +15 EXP Player!'); break;
-        case 'cat_2': RPG.state.currentXP += 40; RPG.save(); showToast('😿 +40 EXP Player!'); break;
-        case 'cat_3': setBuff('exp_x2', 2, 60); showToast('🦁 x2 EXP 60s!'); break;
-        case 'drg_1': setBuff('half_feed', true, 30); showToast('🦎 Giảm phí 30s!'); break;
-        case 'drg_2': myPet.exp += 60; showToast('🐲 Pet +60 EXP!'); break;
-        case 'drg_3': setBuff('exp_x3', 3, 30); showToast('🐉 x3 EXP World!'); break;
-        case 'bny_1': RPG.state.currentXP += 10; RPG.save(); setBuff('half_feed', true, 20); showToast('🐇 +10 EXP & Giảm phí!'); break;
-        case 'bny_2': RPG.state.currentXP += 50; RPG.save(); showToast('🐰 +50 EXP Player!'); break;
-        case 'bny_3': setBuff('exp_x2', 2, 120); showToast('🌙 x2 EXP 120s!'); break;
-        case 'bfl_1': setBuff('free_feed', true, 30); showToast('🐛 Free Food 30s!'); break;
-        case 'bfl_2': RPG.state.coins += 20; RPG.save(); showToast('🧇 +20 Xu!'); break;
-        case 'bfl_3': setBuff('exp_x2', 2, 60); setBuff('free_feed', true, 60); showToast('🦋 God Mode 60s!'); break;
-    }
-
-    skillCooldowns[skill.id] = now + skill.cd * 1000;
-    localStorage.setItem('rpg_pet_cd', JSON.stringify(skillCooldowns));
-    renderPet();
-}
 
 // ===== BUFFS & FX =====
 function setBuff(type, value, durationSec) {
@@ -439,6 +439,30 @@ function setBuff(type, value, durationSec) {
         localStorage.setItem('rpg_buffs', JSON.stringify(buffs));
     } catch(e) { }
 }
+
+// Global Modal Closers to prevent capture errors
+window.closeModals = function() {
+    const sm = document.getElementById('shop-modal');
+    if (sm) sm.style.display = 'none';
+    const im = document.getElementById('inventory-modal');
+    if (im) im.style.display = 'none';
+};
+
+// Wait for DOM to load bindings for modal close buttons avoiding inline onclick issues
+document.addEventListener('DOMContentLoaded', () => {
+    const closeShopBtn = document.getElementById('close-shop-btn');
+    if (closeShopBtn) {
+        closeShopBtn.addEventListener('click', () => {
+            document.getElementById('shop-modal').style.display = 'none';
+        });
+    }
+    const closeInvBtn = document.getElementById('close-inv-btn');
+    if (closeInvBtn) {
+        closeInvBtn.addEventListener('click', () => {
+            document.getElementById('inventory-modal').style.display = 'none';
+        });
+    }
+});
 function getActiveBuff(type) {
     try {
         const buffs = JSON.parse(localStorage.getItem('rpg_buffs') || '{}');
@@ -494,7 +518,7 @@ function logicLoop() {
     
     // Chat bubble randomizer
     if (Math.random() < 0.05) {
-        let blabs = ['Giao di?n x?n qu�!', 'Th?i ti?t h�m nay th? n�o?', 'B?n l�m vi?c vui nh�!', 'M�nh di d?o x�u', 'Zzz...'];
+        let blabs = ['Giao diện xịn quá!', 'Thời tiết hôm nay thế nào?', 'Bạn làm việc vui nhé!', 'Mình đi dạo xíu', 'Zzz...'];
         if (weatherComplaints && weatherComplaints.length > 0) {
            blabs = blabs.concat(weatherComplaints);
         }
