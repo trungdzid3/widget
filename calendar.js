@@ -1,7 +1,9 @@
-﻿const eventListEl = document.getElementById('event-list');
+const eventListEl = document.getElementById('event-list');
 const viewBtns = document.querySelectorAll('.view-btn');
 
 let currentView = 'day';
+let displayDate = new Date();
+displayDate.setHours(0, 0, 0, 0);
 
 function getDateGroup(isoString) {
     if (!isoString) return 'Không xác định';
@@ -60,7 +62,11 @@ function renderListView(events, container) {
         }
 
         const item = document.createElement('div');
-        item.className = 'event-item';
+        const now = new Date();
+        const eventEnd = new Date(end || start);
+        const isPast = eventEnd < now;
+        
+        item.className = 'event-item' + (isPast ? ' past-event' : '');
 
         const h3 = document.createElement('h3');
         h3.className = 'event-title';
@@ -87,9 +93,9 @@ function renderListView(events, container) {
 }
 
 function renderMonthGrid(events, container) {
+    const year = displayDate.getFullYear();
+    const month = displayDate.getMonth();
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
 
     const firstDay = new Date(year, month, 1).getDay();
     let startDay = firstDay === 0 ? 6 : firstDay - 1;
@@ -98,11 +104,22 @@ function renderMonthGrid(events, container) {
 
     const monthTitle = document.createElement('div');
     monthTitle.className = 'month-title';
-    monthTitle.textContent = 'Tháng ' + (month + 1) + ' - ' + year;
+    
+    const monthSpan = document.createElement('span');
+    monthSpan.textContent = 'Tháng ' + (month + 1);
+    monthSpan.onclick = () => openPicker('month');
+    
+    const yearSpan = document.createElement('span');
+    yearSpan.textContent = ' - ' + year;
+    yearSpan.onclick = () => openPicker('year');
+
+    monthTitle.appendChild(monthSpan);
+    monthTitle.appendChild(yearSpan);
     container.appendChild(monthTitle);
 
     const grid = document.createElement('div');
-    grid.className = 'month-grid';
+    const totalCells = startDay + daysInMonth;
+    grid.className = 'month-grid' + (totalCells > 35 ? ' small-cells' : '');
 
     const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     daysOfWeek.forEach(d => {
@@ -137,11 +154,19 @@ function renderMonthGrid(events, container) {
             dayCell.classList.add('has-events');
             
             // Generate list of items
+            const nowTime = new Date().getTime();
             const evtTexts = dayEvents.map(e => {
                 const startStr = e.start.dateTime || e.start.date;
                 const endStr = e.end ? (e.end.dateTime || e.end.date) : null;
                 const _time = formatTime(startStr, endStr);
                 const title = e.summary || 'Trống';
+                
+                const eventEnd = new Date(endStr || startStr).getTime();
+                const isPast = eventEnd < nowTime;
+                
+                if (isPast) {
+                    return `<span class="past-event">• [${_time}] ${title}</span>`;
+                }
                 return '• [' + _time + '] ' + title;
             }).join('<br>');
             
@@ -173,13 +198,10 @@ function renderMonthGrid(events, container) {
                 gt.style.setProperty('--arrow-offset', (cellCenter - widgetCenter) + 'px');
             });
             
-            dayCell.addEventListener('mouseleave', () => {
-                const gt = document.getElementById('global-tooltip');
-                if (gt) gt.style.display = 'none';
-            });
+            dayCell.addEventListener('mouseleave', hideGlobalTooltip);
         }
 
-        if (d === now.getDate()) {
+        if (d === now.getDate() && month === now.getMonth() && year === now.getFullYear()) {
             dayCell.classList.add('is-today');
         }
 
@@ -187,6 +209,56 @@ function renderMonthGrid(events, container) {
     }
 
     container.appendChild(grid);
+}
+
+function hideGlobalTooltip() {
+    const gt = document.getElementById('global-tooltip');
+    if (gt) gt.style.display = 'none';
+}
+
+// picker logic
+function openPicker(type) {
+    const modal = document.getElementById('picker-modal');
+    const title = document.getElementById('picker-title');
+    const grid = document.getElementById('picker-grid');
+    const closeBtn = document.getElementById('close-picker');
+
+    modal.style.display = 'flex';
+    grid.innerHTML = '';
+    title.textContent = type === 'month' ? 'Chọn Tháng' : 'Chọn Năm';
+
+    if (type === 'month') {
+        const months = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+        months.forEach((m, i) => {
+            const item = document.createElement('div');
+            item.className = 'picker-item' + (i === displayDate.getMonth() ? ' active' : '');
+            item.textContent = m;
+            item.onclick = () => {
+                displayDate.setMonth(i);
+                modal.style.display = 'none';
+                hideGlobalTooltip();
+                loadCalendarEvents(true);
+            };
+            grid.appendChild(item);
+        });
+    } else {
+        const curYear = new Date().getFullYear();
+        for (let y = curYear - 5; y <= curYear + 5; y++) {
+            const item = document.createElement('div');
+            item.className = 'picker-item' + (y === displayDate.getFullYear() ? ' active' : '');
+            item.textContent = y;
+            item.onclick = () => {
+                displayDate.setFullYear(y);
+                modal.style.display = 'none';
+                hideGlobalTooltip();
+                loadCalendarEvents(true);
+            };
+            grid.appendChild(item);
+        }
+    }
+
+    closeBtn.onclick = () => modal.style.display = 'none';
+    modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
 }
 
 async function loadCalendarEvents(forceRefresh = false) {
@@ -223,7 +295,7 @@ async function _loadCalendarEvents(view, forceRefresh) {
         // 1. Get Google
         if (config.showGoogle) {
             try {
-                const gEvents = await window.widgetMeta.getCalendarEvents(view);
+                const gEvents = await window.widgetMeta.getCalendarEvents(view, displayDate.toISOString());
                 mergedEvents.push(...gEvents);
             } catch(e) { console.error("Google Fetch err:", e); }
         }
@@ -269,6 +341,7 @@ function renderEvents(events, view) {
     // Ép forced scroll = 0 cho grid Tháng để luôn hiện đủ chữ
     if (view === 'month') {
         scrollTop = 0; 
+        hideGlobalTooltip();
     }
     
     const container = document.createElement('div');
@@ -309,6 +382,25 @@ viewBtns.forEach(btn => {
 document.addEventListener('DOMContentLoaded', () => {
     loadCalendarEvents();
     setInterval(loadCalendarEvents, 30 * 60 * 1000);
+});
+
+// Keyboard navigation
+window.addEventListener('keydown', (e) => {
+    if (currentView !== 'month') return;
+    
+    // Ignore if modal is open
+    if (document.getElementById('picker-modal').style.display === 'flex') return;
+    if (document.getElementById('settings-modal').style.display === 'flex') return;
+
+    if (e.key === 'ArrowLeft') {
+        displayDate.setMonth(displayDate.getMonth() - 1);
+        hideGlobalTooltip();
+        loadCalendarEvents(true);
+    } else if (e.key === 'ArrowRight') {
+        displayDate.setMonth(displayDate.getMonth() + 1);
+        hideGlobalTooltip();
+        loadCalendarEvents(true);
+    }
 });
 
 
@@ -391,31 +483,36 @@ function parseAppleEvents(icsData, view) {
     // but for Apple we got everything. We should manually filter by time to save rendering).
     // For simplicity and since pixel widgets are tiny, we just return the next 30-50 events or match current month.
 
-    let timeMin = new Date();
-    let timeMax = new Date();
-    timeMin.setHours(0, 0, 0, 0);
-
     if (view === 'day') {
-        timeMax.setDate(timeMin.getDate() + 1);
+        const d = new Date(displayDate);
+        timeMin = d;
+        timeMax = new Date(d);
+        timeMax.setDate(d.getDate() + 1);
         timeMax.setHours(0, 0, 0, 0);
     } else if (view === 'week') {
-        const dayOfWeek = timeMin.getDay();
-        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        timeMin.setDate(timeMin.getDate() + diff);
-        timeMin.setHours(0, 0, 0, 0);
+        const d = new Date(displayDate);
+        const dayOfWeek = d.getDay();
+        const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        d.setDate(diff);
+        d.setHours(0, 0, 0, 0);
+        timeMin = d;
             
         timeMax = new Date(timeMin);
         timeMax.setDate(timeMin.getDate() + 7);
         timeMax.setHours(0, 0, 0, 0);
     } else if (view === 'month') {
-        timeMin.setDate(1);
-        timeMin.setHours(0, 0, 0, 0);
+        const d = new Date(displayDate);
+        d.setDate(1);
+        d.setHours(0, 0, 0, 0);
+        timeMin = d;
             
         timeMax = new Date(timeMin);
         timeMax.setMonth(timeMin.getMonth() + 1);
+        timeMax.setDate(1);
         timeMax.setHours(0, 0, 0, 0);
     } else {
-        timeMin = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+        timeMin = new Date(displayDate.getTime() - (30 * 24 * 60 * 60 * 1000));
+        timeMax = new Date(displayDate);
         timeMax.setFullYear(timeMax.getFullYear() + 1);
     }
 

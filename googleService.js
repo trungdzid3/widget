@@ -248,34 +248,46 @@ async function removeTaskList(listId) {
     } catch(e) { console.error('Lỗi Google Tasks:', e.message || ''); return false; }
 }
 
-async function getCalendarEvents(viewType = 'day') {
+async function getCalendarEvents(viewType = 'day', baseDateIso) {
     initGoogle();
     if (!oauth2Client.credentials || Object.keys(oauth2Client.credentials).length === 0) return [];
     try {
-        const now = new Date();
-        let timeMin = new Date(now);
-        let timeMax = new Date(now);
+        const baseDate = baseDateIso ? new Date(baseDateIso) : new Date();
+        let timeMin = new Date(baseDate);
+        let timeMax = new Date(baseDate);
         
-        // Zero out time for boundary calculations (optional, but good for logical days)
         timeMin.setHours(0, 0, 0, 0);
         
         if (viewType === 'day') {
             timeMax.setDate(timeMin.getDate() + 1);
             timeMax.setHours(0, 0, 0, 0);
         } else if (viewType === 'week') {
+            // Monday to Sunday strict range
+            const day = timeMin.getDay();
+            const diff = timeMin.getDate() - day + (day === 0 ? -6 : 1);
+            timeMin.setDate(diff);
+            timeMin.setHours(0, 0, 0, 0);
+
+            timeMax = new Date(timeMin);
             timeMax.setDate(timeMin.getDate() + 7);
             timeMax.setHours(0, 0, 0, 0);
         } else if (viewType === 'month') {
+            timeMin.setDate(1);
+            timeMin.setHours(0, 0, 0, 0);
+            
             timeMax.setMonth(timeMin.getMonth() + 1);
+            timeMax.setDate(1);
             timeMax.setHours(0, 0, 0, 0);
         } else if (viewType === 'year') {
+            timeMin.setMonth(0, 1);
+            timeMin.setHours(0, 0, 0, 0);
             timeMax.setFullYear(timeMin.getFullYear() + 1);
             timeMax.setHours(0, 0, 0, 0);
         }
 
         const res = await calendarService.events.list({
             calendarId: 'primary',
-            timeMin: Math.max(now.getTime(), timeMin.getTime()) === now.getTime() ? now.toISOString() : timeMin.toISOString(),
+            timeMin: timeMin.toISOString(),
             timeMax: timeMax.toISOString(),
             maxResults: 100,
             singleEvents: true,

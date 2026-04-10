@@ -141,6 +141,15 @@ function finishCycle() {
         timeLeft = taskData[currentTask].time;
         updateDisplay(); // Phục hồi hình dạng Mầm Cây Level 1 để báo hiệu Trạng Thái Chuẩn bị Cày Focus
     }
+    syncPomoState();
+}
+
+function syncPomoState() {
+    let state = 'idle';
+    if (isRunning) {
+        state = isBreakMode ? 'break' : 'work';
+    }
+    localStorage.setItem('pomo_status', state);
 }
 
 function tick() {
@@ -162,6 +171,7 @@ taskSelector.addEventListener('change', (e) => {
     updateDisplay();
     msgBox.innerText = `Chờ lệnh...`;
     playBtn.innerText = 'Bắt Đầu';
+    syncPomoState();
 });
 
 playBtn.addEventListener('click', () => {
@@ -202,6 +212,7 @@ playBtn.addEventListener('click', () => {
         }
         stageDisplay.classList.remove('breath');
     }
+    syncPomoState();
 });
 
 resetBtn.addEventListener('click', () => {
@@ -237,6 +248,7 @@ resetBtn.addEventListener('click', () => {
     }
 
     audioPlayer.pause();
+    syncPomoState();
 });
 
 updateDisplay();

@@ -70,10 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddFolder.addEventListener('click', () => {
         inputFolderName.value = '';
         createModal.classList.remove('hidden');
+        ipcRenderer.send('request-focus', 'note', true);
         inputFolderName.focus();
     });
 
-    btnCancelFolder.addEventListener('click', () => createModal.classList.add('hidden'));
+    btnCancelFolder.addEventListener('click', () => {
+        createModal.classList.add('hidden');
+        ipcRenderer.send('request-focus', 'note', false);
+    });
 
     btnConfirmFolder.addEventListener('click', async () => {
         const title = inputFolderName.value.trim();
@@ -83,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnConfirmFolder.textContent = '...';
                 await ipcRenderer.invoke('g-add-tasklist', title);
                 createModal.classList.add('hidden');
+                ipcRenderer.send('request-focus', 'note', false);
                 loadTaskLists();
             } finally {
                 btnConfirmFolder.disabled = false;
@@ -104,10 +109,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentListId = listId;
         noteTitle.textContent = title;
         noteView.classList.remove('hidden');
-        loadGoogleTasks();
+        inputNewTask.focus();
+        ipcRenderer.send('request-focus', 'note', true);
+        
+        // Instant load from cache
+        loadGoogleTasks(true);
     }
-
-    btnCloseNote.addEventListener('click', () => noteView.classList.add('hidden'));
+    
+    btnCloseNote.addEventListener('click', () => {
+        noteView.classList.add('hidden');
+        ipcRenderer.send('request-focus', 'note', false);
+    });
 
     // Bắt sự kiện xóa sổ
     const btnDeleteFolder = document.getElementById('btn-delete-folder');
@@ -133,31 +145,67 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function loadGoogleTasks() {
+    function renderTasks(tasks) {
+        taskListDiv.innerHTML = '';
+        if (tasks && tasks.length > 0) {
+            tasks.forEach(task => {
+                const isDone = task.status === 'completed';
+                const item = document.createElement('div');
+                item.className = `task-item ${isDone ? 'done' : ''}`;
+                item.dataset.taskId = task.id;
+                
+                item.innerHTML = `
+                    <div class="task-checkbox"></div>
+                    <div class="task-title">${task.title}</div>
+                `;
+
+                item.addEventListener('click', () => toggleTaskStatus(task, currentListId, item));
+                taskListDiv.appendChild(item);
+            });
+        } else {
+            taskListDiv.innerHTML = '<div style="text-align:center; padding:10px; opacity:0.7;">Chưa có việc gì!</div>';
+        }
+    }
+
+    async function loadGoogleTasks(useCache = false) {
         if (!currentListId) return;
-        taskListDiv.innerHTML = '<div style="text-align:center; padding:10px;">Đang lật trang...</div>';
+        
+        // 1. Instant Cache Pull
+        if (useCache) {
+            try {
+                const cached = localStorage.getItem(`tasks_${currentListId}`);
+                if (cached) renderTasks(JSON.parse(cached));
+            } catch(e) {}
+        }
+        
+        if (!taskListDiv.innerHTML || taskListDiv.innerHTML.includes('...')) {
+            taskListDiv.innerHTML = '<div style="text-align:center; padding:10px;">Đang lật trang...</div>';
+        }
+
         try {
             const tasks = await ipcRenderer.invoke('g-get-tasks', currentListId);
-            taskListDiv.innerHTML = '';
+            if (tasks) {
+                const tasksJson = JSON.stringify(tasks);
+                const prevJson = localStorage.getItem(`tasks_${currentListId}`);
+                
+                // Only re-render if data actually changed to prevent flicker
+                if (tasksJson !== prevJson) {
+                    localStorage.setItem(`tasks_${currentListId}`, tasksJson);
+                    renderTasks(tasks);
+                }
+            }
+            
             const btnComplete = document.getElementById('btn-complete-folder');
             if (btnComplete) {
                 btnComplete.disabled = false;
                 btnComplete.textContent = 'NỘP SỔ & NHẬN THƯỞNG';
             }
-            if (tasks && tasks.length > 0) {
-                tasks.forEach(task => {
-                    const isDone = task.status === 'completed';
-                    const item = document.createElement('div');
-                    item.className = `task-item ${isDone ? 'done' : ''}`;
-                    item.innerHTML = `<div class="task-checkbox ${isDone ? 'done' : ''}"></div><div class="task-title">${task.title}</div>`;
-
-                    item.addEventListener('click', () => toggleTaskStatus(task, currentListId, item));
-                    taskListDiv.appendChild(item);
-                });
-            } else {
-                taskListDiv.innerHTML = '<div style="text-align:center; padding:10px; opacity:0.7;">Chưa có việc gì!</div>';
+        } catch (e) { 
+            console.error(e); 
+            if (!taskListDiv.innerHTML.includes('task-item')) {
+                taskListDiv.innerHTML = '<div style="text-align:center; padding:10px; color:red;">Lỗi kết nối!</div>';
             }
-        } catch (e) { console.error(e); }
+        }
     }
 
 async function toggleTaskStatus(task, listId, itemElement) {
@@ -169,8 +217,8 @@ async function toggleTaskStatus(task, listId, itemElement) {
         task.status = newStatus;
         if (newStatus === 'completed') {
             itemElement.classList.add('done');
-            const checkbox = itemElement.querySelector('.task-checkbox');
-            if (checkbox) checkbox.classList.add('done');
+            const gif = itemElement.querySelector('.task-gif-marker');
+            if (gif) gif.classList.add('done');
 
             // Prevent cheat: Only reward once per task
             let rewardedTasks = [];
@@ -185,8 +233,8 @@ async function toggleTaskStatus(task, listId, itemElement) {
             }
         } else {
             itemElement.classList.remove('done');
-            const checkbox = itemElement.querySelector('.task-checkbox');
-            if (checkbox) checkbox.classList.remove('done');
+            const gif = itemElement.querySelector('.task-gif-marker');
+            if (gif) gif.classList.remove('done');
         }
 
         try {
@@ -197,11 +245,11 @@ async function toggleTaskStatus(task, listId, itemElement) {
             task.status = isCurrentlyDone ? 'completed' : 'needsAction';
             if (isCurrentlyDone) {
                 itemElement.classList.add('done');
-                const cb = itemElement.querySelector('.task-checkbox');
+                const cb = itemElement.querySelector('.task-gif-marker');
                 if (cb) cb.classList.add('done');
             } else {
                 itemElement.classList.remove('done');
-                const cb = itemElement.querySelector('.task-checkbox');
+                const cb = itemElement.querySelector('.task-gif-marker');
                 if (cb) cb.classList.remove('done');
             }
             
@@ -215,18 +263,32 @@ async function toggleTaskStatus(task, listId, itemElement) {
         if (!currentListId) return;
         const title = inputNewTask.value.trim();
         if (title) {
-            inputNewTask.disabled = true;
-            btnAddTask.disabled = true;
+            const tempTask = { id: 'temp-' + Date.now(), title: title, status: 'needsAction' };
+            
+            // 1. Optimistic UI Update
+            inputNewTask.value = '';
+            
+            // Remove "Empty" message if it exists
+            if (taskListDiv.innerHTML.includes('Chưa có việc gì')) taskListDiv.innerHTML = '';
+            
+            const item = document.createElement('div');
+            item.className = `task-item`;
+            item.innerHTML = `
+                <div class="task-checkbox"></div>
+                <div class="task-title">${title} <span style="opacity:0.5; font-size:12px;">...</span></div>
+            `;
+            taskListDiv.appendChild(item);
+            taskListDiv.scrollTop = taskListDiv.scrollHeight;
+
             try {
-                // positional args required by main.js !
                 await ipcRenderer.invoke('g-add-task', title, currentListId);
-                inputNewTask.value = '';
-                loadGoogleTasks();
+                // Silent refresh to get real IDs from Google
+                loadGoogleTasks(false);
             } catch (error) {
                 console.error(error);
+                item.style.color = 'red';
+                item.querySelector('.task-title').textContent = title + ' (Lỗi thử lại)';
             } finally {
-                inputNewTask.disabled = false;
-                btnAddTask.disabled = false;
                 inputNewTask.focus();
             }
         }
@@ -411,17 +473,39 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let currentAnim = 1;
-    rabbit.addEventListener("click", () => {
-        currentAnim++;
-        if (currentAnim > 3) currentAnim = 1;
-        rabbit.src = "rabbit" + currentAnim + ".png";
+    const animGifs = {
+        'break': "rabbit-coffee.gif",
+        'idle': "rabbit-sleep.gif",
+        'work': "rabbit-work.gif"
+    };
+    const stateNumbers = { 'break': 1, 'idle': 2, 'work': 3 };
 
-        rabbit.style.transform = "translateY(-10px)";
-        setTimeout(() => {
-            rabbit.style.transform = "translateY(0)";
-        }, 150);
+    function updateMascotSync() {
+        const status = localStorage.getItem('pomo_status') || 'idle';
+        rabbit.src = animGifs[status] || animGifs['idle'];
+        showRandomQuote(stateNumbers[status] || 2);
+    }
 
-        showRandomQuote(currentAnim);
+    // Observe changes from other windows
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'pomo_status') updateMascotSync();
+    });
+    
+    // Initial sync
+    updateMascotSync();
+
+    rabbit.addEventListener("click", (e) => {
+        // Prevent blurring of input fields when clicking mascot
+        e.preventDefault();
+        e.stopPropagation();
+
+        const status = localStorage.getItem('pomo_status') || 'idle';
+        showRandomQuote(stateNumbers[status] || 2);
+        
+        // Trigger bounce animation by toggling class
+        rabbit.classList.remove("jump");
+        void rabbit.offsetWidth; // Trigger reflow
+        rabbit.classList.add("jump");
     });
 
     function showRandomQuote(state) {
@@ -429,8 +513,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const quotes = states[state] || states[1];
         const randomIndex = Math.floor(Math.random() * quotes.length);    
         speechBubble.textContent = quotes[randomIndex];
-        speechBubble.style.display = "block";
         speechBubble.classList.remove("hidden");
+        speechBubble.style.display = "block";
 
         setTimeout(() => {
             speechBubble.classList.add("hidden");
@@ -442,7 +526,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let modal = document.getElementById("create-modal");
         
         if ((vw && vw.classList.contains("hidden")) && (modal && modal.classList.contains("hidden"))) {
-            showRandomQuote();
+            const status = localStorage.getItem('pomo_status') || 'idle';
+            showRandomQuote(stateNumbers[status] || 2);
         }
     }, 25000);
 });

@@ -27,26 +27,99 @@ body, html {
     text-shadow: 0 1px 2px rgba(0,0,0,0.2); white-space: nowrap;
 }
 .pet-coins {
-    background: rgba(0,0,0,0.2); color: #fff;
-    padding: 2px 8px; border-radius: 8px;
-    font-size: 16px; margin-right: auto; margin-left: 10px;
-    display: flex; align-items: center; gap: 4px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.15); 
+    color: #fff;
+    padding: 2px 8px; 
+    border-radius: 6px;
+    font-size: 15px;
+    display: flex; 
+    align-items: center; 
+    gap: 4px; 
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.2);
 }
-.drag-handle { cursor: grab; -webkit-app-region: drag; font-size: 18px;}
+.drag-handle { cursor: grab; -webkit-app-region: drag; font-size: 18px; opacity: 0.8;}
+.drag-handle:hover { opacity: 1; }
 
-/* ===== SPECIES PICKER ===== */
-.species-picker { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.picker-title { font-size: 18px; color: #2e7d32; font-weight: bold; }
-.species-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.species-btn {
-    font-size: 20px; padding: 6px 4px; border: 2px solid var(--pet-theme);
-    border-radius: 8px; background: #fff; cursor: pointer; font-family: 'VT323', monospace;
-    transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 0 var(--pet-theme);
-    line-height: 1.2;
+/* ===== SPECIES PICKER (Compact & Refined) ===== */
+.species-picker { 
+    padding: 10px 8px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+    background: #fdfaf5; 
+    flex: 1;
 }
-.species-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 0 var(--pet-theme); }
-.species-btn:active { transform: translateY(2px); box-shadow: 0 0 0 var(--pet-theme); }
-.species-btn small { font-size: 11px; display: block; color: #2e7d32; }
+.picker-title { 
+    font-size: 16px; 
+    color: #5d4037; 
+    font-weight: bold; 
+    text-align: center;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+}
+.species-grid { 
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 8px;
+    padding: 2px;
+}
+.species-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px; 
+    padding: 6px 2px; 
+    border: 2px solid #8d6e63;
+    border-radius: 8px; 
+    background: #fff; 
+    cursor: pointer; 
+    font-family: 'VT323', monospace;
+    transition: all 0.15s ease-out; 
+    box-shadow: 0 2px 0 #8d6e63;
+    position: relative;
+    overflow: hidden;
+    min-height: 55px;
+}
+
+.species-btn:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 0 #8d6e63;
+    background: #fff9c4;
+}
+
+.species-btn[data-species="cat"] { background: #fff5f8; border-color: #ff9ecd; box-shadow: 0 2px 0 #ff9ecd; }
+.species-btn[data-species="cat"]:hover { box-shadow: 0 3px 0 #ff9ecd; }
+
+.species-btn[data-species="dragon"] { background: #f1fcf1; border-color: #98e898; box-shadow: 0 2px 0 #98e898; }
+.species-btn[data-species="dragon"]:hover { box-shadow: 0 3px 0 #98e898; }
+
+.species-btn[data-species="bunny"] { background: #fffcf0; border-color: #ffe4b5; box-shadow: 0 2px 0 #ffe4b5; }
+.species-btn[data-species="bunny"]:hover { box-shadow: 0 3px 0 #ffe4b5; }
+
+.species-btn[data-species="mascot"] { background: #f9f4fb; border-color: #dda0dd; box-shadow: 0 2px 0 #dda0dd; }
+.species-btn[data-species="mascot"]:hover { box-shadow: 0 3px 0 #dda0dd; }
+
+.species-btn[data-species="dog"] { background: #fdfaf5; border-color: #b8860b; box-shadow: 0 2px 0 #b8860b; }
+.species-btn[data-species="dog"]:hover { box-shadow: 0 3px 0 #b8860b; }
+
+.species-btn::before {
+    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 40%;
+    background: rgba(255,255,255,0.4); pointer-events: none;
+}
+
+.species-btn:active { 
+    transform: translateY(1px); 
+    box-shadow: 0 1px 0 #8d6e63; 
+}
+
+.species-btn small { 
+    font-size: 11px; 
+    display: block; 
+    color: #5d4037;
+    margin-top: 2px;
+}
 
 /* ===== PET STAGE ===== */
 .pet-stage {
@@ -66,6 +139,19 @@ body, html {
 }
 .pet-sprite:hover { transform: scale(1.05); }
 .pet-sprite:active { transform: scale(0.95) rotate(5deg); }
+
+.species-bunny {
+    scale: 0.75;
+    translate: 0 -15px;
+}
+.species-dog {
+    scale: 0.70;
+    translate: 0 -15px;
+}
+
+.species-dragon {
+    translate: 0 -35px;
+}
 
 /* ===== ANIMATIONS ===== */
 @keyframes idle-egg    { 0%,100%{transform:scale(1.0) translateY(0) rotate(0)}    50%{transform:scale(1.0) translateY(-2px) rotate(3deg)} }

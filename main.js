@@ -511,8 +511,23 @@ ipcMain.handle("fetch-apple-calendar", (e, urlStr) => {
     });
 });
 
-ipcMain.handle('get-calendar-events', async (e, viewType) => {
-    return await googleService.getCalendarEvents(viewType);
+ipcMain.handle('get-calendar-events', async (e, viewType, baseDateIso) => {
+    return await googleService.getCalendarEvents(viewType, baseDateIso);
+});
+
+ipcMain.on('request-focus', (e, name, needsFocus) => {
+    const wMap = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin, calendar: calendarWin };
+    const win = wMap[name];
+    if (win && !win.isDestroyed()) {
+        if (needsFocus) {
+            // Temporarily disable click-through so user can type/click modals
+            win.setIgnoreMouseEvents(false);
+            win.focus();
+        } else {
+            // Restore pinning state from memory
+            win.setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
+        }
+    }
 });
 
 ipcMain.on('toggle-startup', (e, checked) => {
