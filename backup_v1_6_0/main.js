@@ -1,28 +1,28 @@
-﻿const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut, powerMonitor } = require('electron');
 
-// Giảm tải lỗi nghẽn Cache đĩa khi tạo 6 cửa sổ đồ họa thủy tinh (transparent) cùng lúc
+// Gi?m t?i l?i ngh?n Cache dia khi t?o 6 c?a s? d? h?a thu? tinh (transparent) c?ng l?c
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-http-cache');
-// Bật định vị gốc của Windows 10/11 (không bị phụ thuộc Google Maps API Key gây lỗi GPS)
+// Báº­t Ä‘á»‹nh vá»‹ gá»‘c cá»§a Windows 10/11 (khÃ´ng bá»‹ phá»¥ thuá»™c Google Maps API Key gÃ¢y lá»—i GPS)
 app.commandLine.appendSwitch('enable-features', 'WinrtGeolocationImplementation');
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService,AudioServiceOutOfProcess');
 app.commandLine.appendSwitch('disable-dev-shm-usage');
 app.commandLine.appendSwitch('no-sandbox');
 
-// --- TỐI ƯU HIỆU NĂNG (Bảo Toàn Khung Kính Trong Suốt) ---
-// Tăng tốc độ render và giảm tiêu thụ GPU/CPU (Không dùng app.disableHardwareAcceleration() vì sẽ làm mất transparent)
+// --- Tá»I Æ¯U HIá»†U NÄ‚NG (Báº£o ToÃ n Khung KÃ­nh Trong Suá»‘t) ---
+// TÄƒng tá»‘c Ä‘á»™ render vÃ  giáº£m tiÃªu thá»¥ GPU/CPU (KhÃ´ng dÃ¹ng app.disableHardwareAcceleration() vÃ¬ sáº½ lÃ m máº¥t transparent)
 app.commandLine.appendSwitch('enable-gpu-rasterization'); 
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('disable-software-rasterizer'); 
 app.commandLine.appendSwitch('enable-hardware-overlays');
-// Giới hạn bộ nhớ V8 Garbage Collector để tránh Leak RAM khi treo Background quá lâu
+// Giá»›i háº¡n bá»™ nhá»› V8 Garbage Collector Ä‘á»ƒ trÃ¡nh Leak RAM khi treo Background quÃ¡ lÃ¢u
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
-// Tắt tính năng hạn chế Timer nền (Giúp cho việc đếm ngược / cập nhật thời tiết không bị đứng khi cửa sổ bị khuất)
+// Táº¯t tÃ­nh nÄƒng háº¡n cháº¿ Timer ná»n (GiÃºp cho viá»‡c Ä‘áº¿m ngÆ°á»£c / cáº­p nháº­t thá»i tiáº¿t khÃ´ng bá»‹ Ä‘á»©ng khi cá»­a sá»• bá»‹ khuáº¥t)
 app.commandLine.appendSwitch('disable-background-timer-throttling');
-app.commandLine.appendSwitch('disable-calculate-native-win-occlusion'); // CẤM BĂM KHUNG HÌNH: Tránh bị lỗi tàng hình mất cửa sổ khi không click vào vài tiếng hoặc bị app khác che mất
+app.commandLine.appendSwitch('disable-calculate-native-win-occlusion'); // Cáº¤M BÄ‚M KHUNG HÃŒNH: TrÃ¡nh bá»‹ lá»—i tÃ ng hÃ¬nh máº¥t cá»­a sá»• khi khÃ´ng click vÃ o vÃ i tiáº¿ng hoáº·c bá»‹ app khÃ¡c che máº¥t
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'true');
 
@@ -49,44 +49,46 @@ function backgroundFetch(url) {
     });
 }
 
-// Tự động kiểm tra cập nhật (Cấu hình nâng cao)
+// T? d?ng ki?m tra c?p nh?t (C?u h?nh n?ng cao)
 autoUpdater.autoDownload = true;
 
 autoUpdater.on('checking-for-update', () => {
-    console.log('Đang kiểm tra kết nối tới máy chủ cập nhật...');
+    console.log('?ang ki?m tra k?t n?i t?i m?y ch? c?p nh?t...');
 });
 
 autoUpdater.on('update-available', () => {
-    console.log('Phát hiện bản cập nhật mới. Đang tải về ngầm...');
+    console.log('Ph?t hi?n b?n c?p nh?t m?i. ?ang t?i v? ng?m...');
 });
 
 autoUpdater.on('error', (err) => {
-    console.error('Lỗi trong quá trình cập nhật:', err);
-    require('electron').dialog.showErrorBox('Lỗi Cập Nhật (Debug)', `Chi tiết lỗi:\n\n${err == null ? "Không xác định" : (err.stack || err).toString()}`);
+    console.error('Lá»—i trong quÃ¡ trÃ¬nh cáº­p nháº­t:', err);
+    require('electron').dialog.showErrorBox('Lá»—i Cáº­p Nháº­t (Debug)', `Chi tiáº¿t lá»—i:\n\n${err == null ? "KhÃ´ng xÃ¡c Ä‘á»‹nh" : (err.stack || err).toString()}`);
 });
 
 autoUpdater.on('update-downloaded', (info) => {
-    console.log('Tải xuống hoàn tất! Hiển thị thông báo...'); // Debug log
+    console.log('T?i xu?ng ho?n t?t! Hi?n th? th?ng b?o...'); // Debug log
     
+    // T?m th?i b? di process.platform check d? don gi?n ho? message
+    // Hi?n th? h?p tho?i y?u c?u ngu?i d?ng x?c nh?n
     dialog.showMessageBox({
         type: 'info',
-        title: 'Cập nhật sẵn sàng',
-        message: `Phiên bản mới ${info.version} đã được tải về thành công!`,
-        detail: 'Ứng dụng cần khởi động lại để áp dụng các thay đổi mới nhất. Bạn có muốn thực hiện ngay không?',
-        buttons: ['Khởi động lại ngay', 'Để sau'],
+        title: 'Cáº­p nháº­t sáºµn sÃ ng',
+        message: `PhiÃªn báº£n má»›i ${info.version} Ä‘Ã£ Ä‘Æ°á»£c táº£i vá» thÃ nh cÃ´ng!`,
+        detail: 'á»¨ng dá»¥ng cáº§n khá»Ÿi Ä‘á»™ng láº¡i Ä‘á»ƒ Ã¡p dá»¥ng cÃ¡c thay Ä‘á»•i má»›i nháº¥t. Báº¡n cÃ³ muá»‘n thá»±c hiá»‡n ngay khÃ´ng?',
+        buttons: ['Khá»Ÿi Ä‘á»™ng láº¡i ngay', 'Äá»ƒ sau'],
         defaultId: 0,
         cancelId: 1
     }).then((result) => {
         if (result.response === 0) {
             setImmediate(() => {
-                app.removeAllListeners('window-all-closed'); 
-                autoUpdater.quitAndInstall(true, true); // true = chớp mắt cài ngầm như Launcher Game (Silent Patch)
+                app.removeAllListeners('window-all-closed'); // Ngan ch?n s? ki?n d?ng c?a s? m?c d?nh
+                autoUpdater.quitAndInstall(true, true); // true = chá»›p máº¯t cÃ i ngáº§m nhÆ° Launcher Game (Silent Patch)
             });
         }
     });
 });
 
-// Bỏ qua lỗi SSL mạng cho API weather
+// B? qua l?i SSL m?ng cho API weather
 app.commandLine.appendSwitch('ignore-certificate-errors');
 
 // --- Bounds Manager ---
@@ -99,17 +101,20 @@ function getBounds(name, defaultWidth, defaultHeight, defaultX, defaultY) {
             if (typeof parsed.x === 'number') {
                 bounds.x = parsed.x;
                 bounds.y = parsed.y;
+                // Cá»‘ Ä‘á»‹nh Width/Height tá»« thÃ´ng sá»‘ há»‡ thá»‘ng, KHÃ”NG láº¥y tá»« bá»™ nhá»› Ä‘á»‡m cÅ© (Ä‘á»ƒ chá»‘ng lá»—i dÆ° khoáº£ng trá»‘ng)
             }
         }
     } catch(e) {}
 
-    const { screen } = require('electron');
+    // Auto-rescue logic: Bring off-screen windows back to main screen
+    const { screen } = require('electron'); // make sure screen is available
     const displays = screen.getAllDisplays();
     const isVisibleOnAnyDisplay = displays.some(display => {
         const dx = display.bounds.x;
         const dy = display.bounds.y;
         const dw = display.bounds.width;
         const dh = display.bounds.height;
+        // Check if bounds center is within this display
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
         return (centerX >= dx && centerX <= dx + dw && centerY >= dy && centerY <= dy + dh);
@@ -149,6 +154,7 @@ function saveState(s) {
 let handleWin, launcherWin, weatherWin, noteWin, plantWin, petWin, petWalkWin, calendarWin, tray;
 let openSidebar, closeSidebar;
 let mState = getState();
+// Migrate old configs safely
 if(!mState.active) mState.active = { weather: false, note: false, plant: false, pet: false, calendar: false };
 if(mState.active.plant === undefined) mState.active.plant = false;
 if(mState.active.pet === undefined) mState.active.pet = false;
@@ -174,26 +180,33 @@ function updateTrayMenu() {
 
 function toggleSmartVisibility(forceShow = null) {
     const wins = { weather: weatherWin, note: noteWin, plant: plantWin, pet: petWin, calendar: calendarWin };
+    
+    // Náº¿u forceShow = null (tá»« phÃ­m táº¯t), sáº½ ÄÃ³ng náº¿u Ä‘ang cÃ³ widget má»Ÿ, vÃ  Má»Ÿ náº¿u má»i thá»© Ä‘ang áº©n
     let isCurrentlyShowingAny = Object.values(mState.active).some(v => v === true);
     let shouldShow = forceShow !== null ? forceShow : !isCurrentlyShowingAny;
 
     if (!shouldShow) {
+        // Äang ra lá»‡nh áº¨n -> LÆ°u láº¡i ngay tráº¡ng thÃ¡i Ä‘á»ƒ láº§n sau phá»¥c há»“i
         lastActiveState = JSON.parse(JSON.stringify(mState.active));
         for (let key in mState.active) mState.active[key] = false;
     } else {
+        // Äang ra lá»‡nh Hiá»‡n -> Láº¥y láº¡i tráº¡ng thÃ¡i Ä‘Ã£ lÆ°u
         if (lastActiveState) {
             mState.active = JSON.parse(JSON.stringify(lastActiveState));
         } else {
+            // KhÃ´ng cÃ³ lá»‹ch sá»­ thÃ¬ máº·c Ä‘á»‹nh báº­t láº¡i cÃ¡i thá»i tiáº¿t lÃ m gá»‘c
             mState.active['weather'] = true;
         }
     }
 
+    // Ãp dá»¥ng Ä‘á»™ má» vÃ  tÆ°Æ¡ng tÃ¡c chuá»™t vÃ o danh sÃ¡ch cá»­a sá»•
     for (let key in wins) {
         let isShow = mState.active[key];
         if (wins[key]) {
             if (isShow) {
                 if (wins[key].isMinimized()) wins[key].restore();
                 wins[key].setOpacity(1);
+                // Force always on top again
                 wins[key].setAlwaysOnTop(true, 'screen-saver');
                 try { wins[key].webContents.setFrameRate(60); wins[key].webContents.backgroundThrottling = false; } catch(e){}
                 wins[key].setIgnoreMouseEvents(mState.pinned[key] || false, { forward: true });
@@ -212,10 +225,11 @@ function toggleSmartVisibility(forceShow = null) {
 function createWindows() {
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
+    // 0. Tai Th?
     const hw = 24;
-    const hh = 60;
-    const handleBounds = getBounds('handle', hw, hh, width - hw, Math.floor(height / 2) - Math.floor(hh/2));
-    let initX = width - hw;
+      const hh = 60;
+      const handleBounds = getBounds('handle', hw, hh, width - hw, Math.floor(height / 2) - Math.floor(hh/2));
+      let initX = width - hw;
 
     handleWin = new BrowserWindow({
         width: hw, height: hh,
@@ -227,27 +241,27 @@ function createWindows() {
     handleWin.setAlwaysOnTop(true, 'screen-saver'); 
     handleWin.on('moved', () => saveBounds('handle', handleWin));
 
+    // 0.5 B?ng di?u khi?n ? Chi?u cao 460px t?nh to?n ch?nh x?c t? CSS (kh?ng resize d?ng)
+    // title(42) + 4?widget(224) + 3?gap(24) + settings(42) + footer(56) + padding+border(36) + d? ph?ng(36) = 460
     const LAUNCHER_H = 460;
     launcherWin = new BrowserWindow({
         width: 261, height: LAUNCHER_H,
         x: width - 261, y: Math.floor(height / 2) - Math.floor(LAUNCHER_H / 2),
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
-        show: true, opacity: 0,
+        show: true, opacity: 0, // Gi?i ph?p t?i thu?ng: Render s?n nhung Kh?ng hi?n th? d? s?ng!
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
     launcherWin.loadFile('launcher.html');
-    launcherWin.setIgnoreMouseEvents(true);
+    launcherWin.setIgnoreMouseEvents(true); // Kho? Tuong t?c chu?t khi dang T?ng h?nh
     launcherWin.setAlwaysOnTop(true, 'screen-saver');
 
-    let lastOpened=0; 
-    openSidebar = function() { 
-        lastOpened=Date.now(); 
+let lastOpened=0; openSidebar = function() { lastOpened=Date.now(); 
         if (launcherWin.isMinimized()) launcherWin.restore();
-        launcherWin.setOpacity(1); 
-        launcherWin.setAlwaysOnTop(true, 'screen-saver'); 
+        launcherWin.setOpacity(1); // Triệu hồi bằng GPU cực muợt
+        launcherWin.setAlwaysOnTop(true, 'screen-saver'); // Chống mất ưu tiên 
         launcherWin.setIgnoreMouseEvents(false);
         launcherWin.show();
-        setTimeout(() => launcherWin.focus(), 50); 
+        setTimeout(() => launcherWin.focus(), 50); // Delay lấy focus ngắn lại
         launcherWin.webContents.send('play-open');
 
         if (handleWin) {
@@ -261,7 +275,7 @@ function createWindows() {
         launcherWin.setIgnoreMouseEvents(true);
         setTimeout(() => {
             launcherWin.setOpacity(0);
-            launcherWin.hide(); 
+            launcherWin.hide(); // Ẩn hoàn toàn để loại khỏi vòng lặp Focus của OS
             if (handleWin && !handleWin.isDestroyed()) {
                 if (handleWin.isMinimized()) handleWin.restore();
                 handleWin.setOpacity(1);
@@ -280,6 +294,7 @@ function createWindows() {
         } 
     });
     
+    // Custom JS Dragging cho Tai th? (Logic ch?n m?p m?n h?nh c? di?n)
     let handleDragOffsetX = 0;
     let handleDragOffsetY = 0;
 
@@ -295,9 +310,13 @@ function createWindows() {
         if (!handleWin) return;
         const { width, height } = screen.getPrimaryDisplay().workAreaSize;
         const cursor = screen.getCursorScreenPoint();
-        const [winWidth, winHeight] = handleWin.getSize(); 
-        let targetX = width - winWidth; 
+
+        // Kh?ng cho vu?t ra kh?i 4 m?p hi?n th?
+        const [winWidth, winHeight] = handleWin.getSize(); let targetX = Math.max(0, Math.min(cursor.x - handleDragOffsetX, width - winWidth));
         let targetY = Math.max(0, Math.min(cursor.y - handleDragOffsetY, height - winHeight));
+        // N?U dang ? Ch? d? B?m C?nh -> C? d?nh tr?c X v?o l? Pk?i
+        targetX = width - winWidth;
+
         handleWin.setPosition(targetX, targetY);
     });
 
@@ -313,6 +332,7 @@ function createWindows() {
         launcherWin.setBounds({ width: w, height: h, x: launcherWin.getBounds().x, y: newY });
     });
 
+    // Resize Weather
     ipcMain.on('resize-weather', (e, h) => {
         if (!weatherWin) return;
         const bounds = weatherWin.getBounds();
@@ -321,6 +341,7 @@ function createWindows() {
         }
     });
 
+    // Helper: Trá»ng lá»±c Nam ChÃ¢m (Magnetic Snap)
     function snapToOthers(currentWin) {
         const SNAP_DIST = 20;
         const bounds = currentWin.getBounds();
@@ -330,10 +351,18 @@ function createWindows() {
         BrowserWindow.getAllWindows().forEach(other => {
             if (other === currentWin || !other.isVisible()) return;
             const ob = other.getBounds();
-            if (Math.abs(bounds.x - (ob.x + ob.width)) < SNAP_DIST) snappedX = ob.x + ob.width - 12;
+            
+            // Cáº¡nh trÃ¡i cháº¡m Cáº¡nh pháº£i
+            if (Math.abs(bounds.x - (ob.x + ob.width)) < SNAP_DIST) snappedX = ob.x + ob.width - 12; // -12 Ä‘á»ƒ Ä‘Ã¨ bÃ³ng Ä‘á»• lÃªn nhau
+            // Cáº¡nh pháº£i cháº¡m Cáº¡nh trÃ¡i
             if (Math.abs((bounds.x + bounds.width) - ob.x) < SNAP_DIST) snappedX = ob.x - bounds.width + 12;
+            
+            // Cáº¡nh trÃªn cháº¡m Cáº¡nh dÆ°á»›i
             if (Math.abs(bounds.y - (ob.y + ob.height)) < SNAP_DIST) snappedY = ob.y + ob.height - 12;
+            // Cáº¡nh dÆ°á»›i cháº¡m Cáº¡nh trÃªn
             if (Math.abs((bounds.y + bounds.height) - ob.y) < SNAP_DIST) snappedY = ob.y - bounds.height + 12;
+            
+            // Chiá»u dá»c tháº³ng hÃ ng (GiÃ³ng lá» trÃ¡i/pháº£i)
             if (Math.abs(bounds.x - ob.x) < SNAP_DIST) snappedX = ob.x;
             if (Math.abs(bounds.y - ob.y) < SNAP_DIST) snappedY = ob.y;
         });
@@ -343,6 +372,7 @@ function createWindows() {
         }
     }
 
+    // Helper: T?o c?a s? widget ti?u chu?n
     function createWidget(name, file, defaults, webPrefs, extra = {}) {
         const b = getBounds(name, ...defaults);
         const win = new BrowserWindow({
@@ -354,9 +384,11 @@ function createWindows() {
             ...extra
         });
         
+        // Gia cá»‘ CÆ°á»¡ng Cháº¿ widget á»Ÿ lá»›p Screen-Saver Ä‘á»ƒ khÃ´ng bao giá» bá»‹ Ä‘Ã¨ mÆ°á»£n bá»Ÿi Fullscreen Apps
         win.setAlwaysOnTop(true, 'screen-saver');
         win.loadFile(file);
         
+        // CÆ¡ cháº¿ phá»¥c há»“i Widget náº¿u GPU hoáº·c Ram gÃ¢y Crash áº©n khung hÃ¬nh
         win.webContents.on('render-process-gone', (e, details) => {
             if (details.reason === 'crashed' || details.reason === 'oom' || details.reason === 'killed') {
                 console.log(`[Crash Recovery] Auto-reloading ${name} widget due to ${details.reason}`);
@@ -364,6 +396,7 @@ function createWindows() {
             }
         });
         
+        // KhÃ´ng pháº£i lÃ  Crash mÃ  chá»‰ Ä‘Æ¡ lÃµi JS (Unresponsive) do Ä‘á»ƒ background quÃ¡ lÃ¢u
         win.on('unresponsive', () => {
             console.log(`[Unresponsive] ${name} widget frozen. Reloading...`);
             setTimeout(() => { if (!win.isDestroyed()) win.reload(); }, 500);
@@ -375,7 +408,7 @@ function createWindows() {
             moveTimeout = setTimeout(() => {
                 snapToOthers(win);
                 saveBounds(name, win);
-            }, 150);
+            }, 150); // HÃ­t sau khi nháº£ chuá»™t má»™t chÃºt Ä‘á»ƒ khÃ´ng giáº­t lag
         });
 
         if (extra.resizable) win.on('resized', () => saveBounds(name, win));
@@ -406,12 +439,14 @@ function createWindows() {
         });
 
         if (!mState.active[name]) {
-            win.setIgnoreMouseEvents(true);
-            try{ win.webContents.setFrameRate(1); win.webContents.backgroundThrottling = true; } catch(e){}
-        } else win.setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
+        win.setIgnoreMouseEvents(true);
+        try{ win.webContents.setFrameRate(1); win.webContents.backgroundThrottling = true; } catch(e){}
+    }
+        else win.setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         return win;
     }
 
+    // 1. Weather (Width 327 Ã´m khÃ­t margin + shadow)
     weatherWin = createWidget('weather', 'index.html', [327, 490, width - 600, 100], {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
@@ -419,17 +454,21 @@ function createWindows() {
         sandbox: false
     });
 
+    // 2. Sá»• Nhiá»‡m Vá»¥ (Chiá»u rá»™ng bÃ¹ margin 11px)
     const defNoteX = width - 900;
     noteWin = createWidget('note', 'note.html', [271, 375, defNoteX, weatherWin.getBounds().y], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
 
+    // 3. Plant (Tamagotchi / Pomodoro Lofi) (Chiá»u rá»™ng + chiá»u cao bÃ¹ 11px margin tÃ ng hÃ¬nh)
     plantWin = createWidget('plant', 'plant.html', [271, 241, width - 350, 100], 
         { nodeIntegration: true, contextIsolation: false });
 
+    // 4. Pet (ThÃº CÆ°ng RPG) (Chiá»u rá»™ng + chiá»u cao bÃ¹ 11px margin tÃ ng hÃ¬nh)
     petWin = createWidget('pet', 'pet.html', [273, 321, width - 600, 300], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
-    petWin.setSize(273, 321); 
+    petWin.setSize(273, 321); // Hard fix for pet size
 
+    // 5. Calendar (Lá»‹ch Google)
     calendarWin = createWidget('calendar', 'calendar.html', [300, 400, width - 600, 600], {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
@@ -438,6 +477,7 @@ function createWindows() {
     });
 }
 
+// GUI Comm Channels
 ipcMain.on('weather-update', (e, data) => {
     if (petWin && !petWin.isDestroyed() && petWin.webContents) petWin.webContents.send('weather-impact', data);
     if (plantWin && !plantWin.isDestroyed() && plantWin.webContents) plantWin.webContents.send('weather-impact', data);
@@ -453,7 +493,7 @@ ipcMain.on('rpg-state-update', (e, state) => {
 
 ipcMain.handle('get-widget-states', () => mState);
 ipcMain.handle('get-startup', () => app.getLoginItemSettings().openAtLogin);
-ipcMain.handle('is-packaged', () => app.isPackaged);
+
 
 ipcMain.handle("fetch-apple-calendar", (e, urlStr) => {
     return new Promise((resolve, reject) => {
@@ -480,9 +520,11 @@ ipcMain.on('request-focus', (e, name, needsFocus) => {
     const win = wMap[name];
     if (win && !win.isDestroyed()) {
         if (needsFocus) {
+            // Temporarily disable click-through so user can type/click modals
             win.setIgnoreMouseEvents(false);
             win.focus();
         } else {
+            // Restore pinning state from memory
             win.setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         }
     }
@@ -503,6 +545,7 @@ ipcMain.on('toggle-widget', (event, name, isVisible) => {
         if (isVisible) {
             if (wMap[name].isMinimized()) wMap[name].restore();
             wMap[name].setOpacity(1);
+            // Má»—i láº§n báº­t láº¡i, gá»i láº¡i alwaysOnTop Ä‘á»ƒ chá»‘ng rÆ¡t cáº¥p sau khi Explorer Windows khá»Ÿi Ä‘á»™ng láº¡i hoáº·c thoÃ¡t Game Fullscreen
             wMap[name].setAlwaysOnTop(true, 'screen-saver');
             try { wMap[name].webContents.setFrameRate(60); wMap[name].webContents.backgroundThrottling = false; } catch(e){}
             wMap[name].setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
@@ -522,9 +565,11 @@ ipcMain.on('pin-widget', (event, name, isPinned) => {
 });
 
 const gotTheLock = app.requestSingleInstanceLock();
+
 if (!gotTheLock) {
     app.quit();
 }
+
 app.on('second-instance', (event, commandLine, workingDirectory) => {
     if (launcherWin) {
         openSidebar();
@@ -532,21 +577,25 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
 });
 
 app.whenReady().then(() => {
+    // Láº¯ng nghe há»‡ thá»‘ng thá»©c giáº¥c (Sleep / Resume) Ä‘á»ƒ chá»‘ng lá»—i tÃ ng hÃ¬nh
     function wakeUpWindows() {
         console.log('[System Wake] Force repainting framework windows...');
         const allWins = BrowserWindow.getAllWindows();
         allWins.forEach(w => {
             if (!w || w.isDestroyed()) return;
+            // Ép OS vẽ lại báo hụt GPU
             const [wW, wH] = w.getSize();
             w.setSize(wW, wH + 1);
             w.setSize(wW, wH);
             if (w.isMinimized()) w.restore();
+            // Náº¿u opacity > 0 thÃ¬ ép hiá»‡n lên (nÃ© Windows nuá»‘t forms)
             if (w.getOpacity() > 0) {
                 w.showInactive();
                 w.setAlwaysOnTop(true, 'screen-saver');
             }
         });
         
+        // Dáº£m báº£o Tai thá» khÃ´ng bá»‹ kẹt
         if (handleWin && launcherWin) {
             if (launcherWin.getOpacity() === 0) {
                 if (handleWin.isMinimized()) handleWin.restore();
@@ -561,21 +610,30 @@ app.whenReady().then(() => {
     powerMonitor.on('resume', wakeUpWindows);
     powerMonitor.on('unlock-screen', wakeUpWindows);
 
+    // ÄÄƒng kÃ½ PhÃ­m táº¯t ToÃ n Cáº§u Ä‘á»ƒ áº¨n / Má»Ÿ láº¡i thÃ´ng minh (Ctrl+Shift+D)
     globalShortcut.register('CommandOrControl+Shift+D', () => {
         toggleSmartVisibility(null);
     });
 
+    // Ki?m tra v? th?ng b?o c?p nh?t ngay khi m?
     setTimeout(() => { autoUpdater.checkForUpdates(); }, 4000);
+
+    // UU TI?N S? 1: Ph?ng ra giao di?n nhanh ngay l?p t?c!
     createWindows();
 
     tray = new Tray(path.join(__dirname, 'Bunny_Sunny.png')); 
     tray.setToolTip('Hệ Sinh Thái Pixel by Nashallery');
     updateTrayMenu();
 
-    tray.on('right-click', () => { if (tray.contextMenu) tray.popUpContextMenu(tray.contextMenu); });
-    tray.on('click', () => { if (launcherWin) openSidebar(); });
-    tray.on('double-click', () => { if (launcherWin) openSidebar(); });
-
+      tray.on('right-click', () => { if (tray.contextMenu) tray.popUpContextMenu(tray.contextMenu); });
+      tray.on('click', () => {
+          if (launcherWin) openSidebar();
+      });
+      tray.on('double-click', () => {
+          if (launcherWin) openSidebar();
+      });
+      // UU TI?N S? 2: Khi Giao di?n Graphic d? k?t xu?t xong xu?i, b?t d?u ch?c Cloud l?y d? li?u
+    // Tr? ho?n k?o d?i th?nh G?n 3 gi?y (2500ms) d? H? di?u h?nh d?p xong Khung C?a S?, Tuy?t d?i mu?t m?
     setTimeout(() => {
         googleService.authenticate().then(() => {
             console.log("==> GOOGLE API HOÀN TẤT KẾT NỐI!");
@@ -583,6 +641,7 @@ app.whenReady().then(() => {
         }).catch(err => console.log("Hỏng Google Auth:", err));
     }, 2500);
 
+    // =============== Google IPC Cầu Nối API ===============
     ipcMain.handle('g-get-tasklists', async () => await googleService.getTaskLists());
     ipcMain.handle('g-add-tasklist', async (e, title) => await googleService.addTaskList(title));
     ipcMain.handle('g-remove-tasklist', async (e, listId) => await googleService.removeTaskList(listId));
@@ -591,23 +650,50 @@ app.whenReady().then(() => {
     ipcMain.handle('g-complete-task', async (e, id, listId) => await googleService.completeTask(id, listId));
     ipcMain.handle('g-update-task-status', async (e, taskId, status, listId) => await googleService.updateTaskStatus(listId, taskId, status));
     ipcMain.handle('g-remove-task', async (e, id, listId) => await googleService.removeTask(id, listId));
+    
+    // ÄÃ¡m mÃ¢y
     ipcMain.handle('g-backup-rpg', async (e, data) => await googleService.backupRPG(data));
     ipcMain.handle('g-restore-rpg', async () => await googleService.restoreRPG());
     
+    // API ??nh v? IP (Node.js Fetch Bypass CORS)
     ipcMain.handle('get-ip-location', async () => {
+        console.log('[Main] Getting IP Location via Electron Net...');
         try {
+            // Priority 0: ip-api.com (Very reliable, HTTP allowed in Node)
             const data = await backgroundFetch('http://ip-api.com/json/');
             if(data.status === 'success') {
+                console.log('[Main] IP Location success via ip-api.com');
                 return { lat: data.lat, lon: data.lon, city: data.city, region: data.regionName, country: data.country };
             }
-        } catch(e) {}
+        } catch(e) { console.log('[Main] IP Fallback 0 failed (Status/Net):', e.message); }
+
+        try {
+            // Priority 1: ipwho.is (Fast, detailed)
+            const data = await backgroundFetch('https://ipwho.is/');
+            if(data.success) {
+                console.log('[Main] IP Location success via ipwho.is');
+                return { lat: data.latitude, lon: data.longitude, city: data.city, region: data.region, country: data.country };
+            }
+        } catch(e) { console.log('[Main] IP Fallback 1 failed (Status/Net):', e.message); }
+
+        try {
+            // Priority 2: ipapi.co (Backup)
+            const data = await backgroundFetch('https://ipapi.co/json/');
+            console.log('[Main] IP Location success via ipapi.co');
+            return { lat: data.latitude, lon: data.longitude, city: data.city, region: data.region, country: data.country_name };
+        } catch(e) { console.log('[Main] IP Fallback 2 failed (Status/Net):', e.message); }
+
+        console.log('[Main] All IP Location services failed.');
         return null;
     });
+    // =======================================================
 
     session.defaultSession.setPermissionRequestHandler((webContents, prop, callback) => {
         callback(prop === 'geolocation');
     });
 
+    // B? kho? (Bypass) gi?i h?n nh?ng c?a YouTube (L?i 153 / L?i hi?n th? video)
+    // Gi? m?o Header b?o c?o Origin l? ch?nh trang Youtube d? qua m?t h? th?ng ki?m duy?t!
     session.defaultSession.webRequest.onBeforeSendHeaders(
         { urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*'] },
         (details, callback) => {
@@ -616,16 +702,39 @@ app.whenReady().then(() => {
             callback({ requestHeaders: details.requestHeaders });
         }
     );
+
+    // Kh?i t?o th?nh c?ng!
 });
 
 app.on('before-quit', () => isQuiting = true);
 app.on('will-quit', () => globalShortcut.unregisterAll());
+
+// Lazy Event Listeners (Báº£o lÆ°u RAM)
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin' && isQuiting) {
         app.quit();
     }
 });
+
 app.on('activate', () => {
+    // macOS: Táº¡o láº¡i Windows náº¿u click vÃ o Dock icon
     if (BrowserWindow.getAllWindows().length === 0) createWindows();
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

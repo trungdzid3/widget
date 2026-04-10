@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <title>Pixel Weather Widget</title>
+</head>
+
+<body>
+    <div class="widget-container">
+        <div class="header">
+            <span id="greeting">☀️ Buổi Sáng</span>
+            <div class="header-controls">
+                <button id="sound-btn" title="Bật âm thanh">🔇</button>
+                <span id="clock">--:--</span>
+            </div>
+        </div>
+
+        <div class="city-bar">
+            <button id="geo-btn" title="Tự động lấy vị trí">📍</button>
+            <select id="city-select" title="Chọn thành phố" aria-label="Chọn thành phố">
+                <option value="21.0278,105.8342">🏙 Hà Nội</option>
+                <option value="10.8231,106.6297">🌆 TP. Hồ Chí Minh</option>
+                <option value="16.0544,108.2022">🌉 Đà Nẵng</option>
+                <option value="10.0452,105.7469">🚤 Cần Thơ</option>
+                <option value="20.8449,106.6881">⚓ Hải Phòng</option>
+                <option value="custom">🔍 Vị trí khác (Tự tìm)...</option>
+            </select>
+            <button id="city-delete-btn" title="Xóa địa điểm đã lưu" aria-label="Xóa địa điểm đã lưu">🗑</button>
+            <div id="city-search-box">
+                <input type="text" id="city-input" placeholder="TP (Vd: Sa Pa)..." title="Nhập danh xưng thành phố (hoặc tỉnh/nước) rồi nhấn Enter">
+                <button id="city-search-cancel" title="Về danh sách cũ">❌</button>
+            </div>
+        </div>
+
+        <div class="char-box">
+            <div id="weather-alert"></div>
+            <canvas id="weather-canvas"></canvas>
+            <img id="bunny-char" src="Bunny_Sunny.png" class="bunny-img" alt="thỏ cute">
+            <div class="stats-overlay">
+                <span>💧 <span id="humidity">--%</span></span>
+                <span>💨 <span id="wind">-- km/h</span></span>
+            </div>
+        </div>
+
+        <div class="info-toggle">
+            <div id="view-current">
+                <p class="temp" id="temp-display">--°C</p>
+                <div class="status" id="weather-desc">Đang tải...</div>
+            </div>
+            <div id="view-forecast">
+                <div class="fc-header">📅 Dự Báo 3 Ngày — nhấn để đóng</div>
+                <div class="forecast-row">
+                    <div class="fc-card" id="fc0">
+                        <div class="fc-day">--</div>
+                        <div class="fc-icon">--</div>
+                        <div class="fc-hi">--</div>
+                        <div class="fc-lo">--</div>
+                    </div>
+                    <div class="fc-card" id="fc1">
+                        <div class="fc-day">--</div>
+                        <div class="fc-icon">--</div>
+                        <div class="fc-hi">--</div>
+                        <div class="fc-lo">--</div>
+                    </div>
+                    <div class="fc-card" id="fc2">
+                        <div class="fc-day">--</div>
+                        <div class="fc-icon">--</div>
+                        <div class="fc-hi">--</div>
+                        <div class="fc-lo">--</div>
+                    </div>
+                </div>
+            </div>
+            <div id="meta-status" class="meta-status">⏳ Đang tải dữ liệu...</div>
+        </div>
+
+        <div id="geo-toast"></div>
+    </div>
+
+    <script src="renderer.js" defer></script>
+</body>
+
+</html>

@@ -16,18 +16,9 @@ const PET_SPECIES = {
 if (typeof window.RPG !== 'undefined') window.RPG.init();
 let myPet = JSON.parse(localStorage.getItem('rpg_pet')) || { lv: 1, exp: 0, species: null };
 // Initialize petMain visibility based on species presence
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     const pm = document.getElementById('pet-main');
     const sp = document.getElementById('species-picker');
-    
-    // Hide debug levelup item in production
-    const isPackaged = await ipcRenderer.invoke('is-packaged');
-    const debugItem = document.querySelector('.shop-item[onclick*="test_levelup"]');
-    if (isPackaged && debugItem) {
-        debugItem.style.display = 'none';
-        // Adjust grid or styling if needed
-    }
-
     if (myPet.species) {
         if(pm) pm.style.display = 'block';
         if(sp) sp.style.display = 'none';

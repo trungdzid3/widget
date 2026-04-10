@@ -1,0 +1,53 @@
+{
+  "name": "pixel-weather-widget",
+  "version": "1.6.0",
+  "description": "A retro pixel art desktop widget.",
+  "author": "trungdzid3",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "publish": "electron-builder -p always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3",
+    "googleapis": "^105.0.0",
+    "lodash.debounce": "^4.0.8"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.lofi.pixelwidget",
+    "productName": "Pixel Widget",
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!backup_local/**",
+      "!WeatherWidget_Backup_PreOptimization/**",
+      "!.git/**",
+      "!**/*.md",
+      "config-private.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "trungdzid3",
+        "repo": "widget"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
