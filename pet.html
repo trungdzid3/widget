@@ -23,30 +23,56 @@
             <div class="shop-content">
                 <div class="shop-header">🛒 Cửa Hàng <button type="button" id="close-shop-btn" class="close-shop-btn" onclick="window.closeModals()">✖</button></div>
                 <div class="shop-items">
-                    <div class="shop-item" onclick="buyShopItem('test_levelup', 0, 'Thuốc Tiến Hoá (Test)', 'instant', 0)">
-                        <div class="item-icon">🌟</div>
-                        <div class="item-name">Thuốc Tiến Hoá (Dùng ngay rảnh rỗi)</div>
-                        <div class="item-cost">0 Xu</div>
+                    <!-- Siêu Thuốc Tiến Hóa (Test) sẽ được tự động thêm vào đây khi ở chế độ npm run test -->
+                    <div class="shop-item gacha" onclick="window.buyEgg('random', 200, 'Trứng Ngẫu Nhiên')">
+                        <div class="item-icon">🥚✨</div>
+                        <div class="item-details">
+                            <div class="item-name">Trứng Ngẫu Nhiên</div>
+                            <div class="item-desc">Mở ra loài mới hoặc 500 XP</div>
+                        </div>
+                        <div class="item-cost">200 Xu</div>
                     </div>
+
+                    <div class="shop-item gacha" onclick="window.buyEgg('target', 400, 'Trứng Chỉ Định')">
+                        <div class="item-icon">🥚🎯</div>
+                        <div class="item-details">
+                            <div class="item-name">Trứng Chỉ Định</div>
+                            <div class="item-desc">Chọn đích danh loài thú</div>
+                        </div>
+                        <div class="item-cost">400 Xu</div>
+                    </div>
+
                     <div class="shop-item" onclick="buyShopItem('cookie', 5, 'Bánh Quy', 'food', 15)">
                         <div class="item-icon">🍪</div>
-                        <div class="item-name">Bánh Quy (+15XP)</div>
+                        <div class="item-details">
+                            <div class="item-name">Bánh Quy</div>
+                            <div class="item-desc">+15 XP</div>
+                        </div>
                         <div class="item-cost">5 Xu</div>
                     </div>
                     <div class="shop-item" onclick="buyShopItem('apple', 20, 'Táo Vàng', 'food', 50)">
                         <div class="item-icon">🍎</div>
-                        <div class="item-name">Táo Vàng (+50XP)</div>
+                        <div class="item-details">
+                            <div class="item-name">Táo Vàng</div>
+                            <div class="item-desc">+50 XP</div>
+                        </div>
                         <div class="item-cost">20 Xu</div>
                     </div>
                     <div class="shop-item" onclick="buyShopItem('meat', 40, 'Đùi Thịt', 'food', 120)">
                         <div class="item-icon">🍖</div>
-                        <div class="item-name">Đùi Thịt (+120XP)</div>
+                        <div class="item-details">
+                            <div class="item-name">Đùi Thịt</div>
+                            <div class="item-desc">+120 XP</div>
+                        </div>
                         <div class="item-cost">40 Xu</div>
                     </div>
 
                     <div class="shop-item" onclick="buyShopItem('box', 30, 'Hộp Bí Ẩn', 'instant', 0)">
                         <div class="item-icon">🎁</div>
-                        <div class="item-name">Hộp Bí Ẩn (Dùng Ngay)</div>
+                        <div class="item-details">
+                            <div class="item-name">Hộp Bí Ẩn</div>
+                            <div class="item-desc">Dùng Ngay</div>
+                        </div>
                         <div class="item-cost">30 Xu</div>
                     </div>
                 </div>

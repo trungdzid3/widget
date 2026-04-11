@@ -1,3 +1,4 @@
+
 const playBtn = document.getElementById('pomo-play');
 const resetBtn = document.getElementById('pomo-reset');
 const timerDisplay = document.getElementById('timer');
@@ -5,250 +6,418 @@ const stageDisplay = document.getElementById('plant-stage');
 const msgBox = document.getElementById('pomo-msg');
 const taskSelector = document.getElementById('task-type');
 const audioPlayer = document.getElementById('lofi-audio');
-
 const volSlider = document.getElementById('vol-slider');
 const volIcon = document.getElementById('vol-icon');
 
+// UI Điều khiển mới
+const musicBar = document.getElementById('music-bar');
+const nowPlaying = document.getElementById('now-playing');
+const musicPrev = document.getElementById('music-prev');
+const musicNext = document.getElementById('music-next');
+const musicShuffle = document.getElementById('music-shuffle');
+const musicListBtn = document.getElementById('music-list');
+const timeMinus = document.getElementById('time-minus');
+const timePlus = document.getElementById('time-plus');
+
 const { ipcRenderer } = require('electron');
 
-let musicRadios = [
-    'https://streams.ilovemusic.de/iloveradio17.mp3',
-    'https://streams.ilovemusic.de/iloveradio10.mp3',
-    'https://cdn.stream.chillhop.com/audio/chillhop-stream-live-128.mp3',
-    'https://stream.zeno.fm/f3wvbbqmdg8uv'
-];
-
-const sunnyPlaylists = [
-    'https://cdn.stream.chillhop.com/audio/chillhop-stream-live-128.mp3',
-    'https://streams.ilovemusic.de/iloveradio17.mp3',
-];
-
-const rainyPlaylists = [
-    'https://stream.zeno.fm/f3wvbbqmdg8uv', 
-    'https://streams.ilovemusic.de/iloveradio10.mp3'
-];
-
-ipcRenderer.on('weather-impact', (e, data) => {
-    if (data.fx.includes('rain') || data.fx === 'thunder') {
-        musicRadios = rainyPlaylists;
-    } else {
-        musicRadios = sunnyPlaylists;
-    }
-});
-
-let isMuted = false;
-audioPlayer.volume = volSlider.value / 100;
-
-volSlider.addEventListener('input', (e) => {
-    if (!isMuted) {
-        audioPlayer.volume = e.target.value / 100;
-        updateVolumeIcon();
-    }
-});
-
-volIcon.addEventListener('click', () => {
-    isMuted = !isMuted;
-    if (isMuted) {
-        audioPlayer.volume = 0;
-        volIcon.innerText = '🔇';
-    } else {
-        audioPlayer.volume = volSlider.value / 100;
-        updateVolumeIcon();
-    }
-});
-
-function updateVolumeIcon() {
-    const v = volSlider.value;
-    if (v == 0) volIcon.innerText = '🔇';
-    else if (v < 50) volIcon.innerText = '🔉';
-    else volIcon.innerText = '🔊';
-}
-
-const taskData = {
-    egg: { time: 15 * 60, emojis: ['🥚', '🐣', '🐥', '🐔', '🐉', '🐉🔥'], name: 'Hỏa Rồng' },
-    plant: { time: 25 * 60, emojis: ['🌱', '🌿', '🪴', '🌳', '🌹', '🌺'], name: 'Hoa Lofi' },
-    house: { time: 45 * 60, emojis: ['🧱', '🪵', '🏗️', '🏠', '🏰', '🏰🎆'], name: 'Lâu Đài Vàng' },
-    potion: { time: 60 * 60, emojis: ['💧', '🧪', '🥘', '🔮', '✨', '🧙‍♂️🌟'], name: 'Tiên Đan' }
+// ===== DỮ LIỆU ÂM NHẠC ĐA TẦNG (CAT TIER 2) =====
+const musicGenres = {
+    lofi: [
+        { name: 'Lofi Chill 1', url: 'https://cdn.stream.chillhop.com/audio/chillhop-stream-live-128.mp3' },
+        { name: 'Lofi Radio 2', url: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
+        { name: 'Classic Lofi', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' },
+        { name: 'Relaxing Beat', url: 'http://stream.psychomed.gr/jazz.mp3' }
+    ],
+    jazz: [
+        { name: 'Smooth Jazz', url: 'http://stream.psychomed.gr/jazz.mp3' },
+        { name: 'Midnight Cafe', url: 'https://streams.ilovemusic.de/iloveradio10.mp3' }
+    ],
+    nature: [
+        { name: 'Rainy Night', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' },
+        { name: 'Forest Bird', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' } 
+    ],
+    coding: [
+        { name: 'Cyberpunk Radio', url: 'https://nightride.fm/stream/nightride.m4a' },
+        { name: 'Syntax Stream', url: 'https://nightride.fm/stream/nightride.m4a' }
+    ]
 };
 
-let timer = null;
-let currentTask = 'plant';
-let POMO_TIME = taskData[currentTask].time;
-let timeLeft = POMO_TIME;
-let isRunning = false;
+let currentGenre = 'lofi';
+let currentTrackIdx = 0;
+let isShuffle = false;
+let isYouTubeMode = false;
+let ytPlayer = null;
+let isTestMode = false;
+let favoriteAlbums = JSON.parse(localStorage.getItem('yt_albums') || '[]');
 
-// Hệ thống Chu kì Gián Đoạn (Giải lao)
+// ===== KHỞI TẠO TIẾN HÓA =====
+function checkPetPrivileges() {
+    // Chỉ cần sở hữu bất kỳ Pet nào đạt Tier, tính năng sẽ mở khóa vĩnh viễn
+    const globalTier = RPG.getGlobalMaxTier();
+    const mascotTier = RPG.getOwnedPetTier('mascot');
+
+    // Mèo Thần: Nhạc (Giờ đây pet nào cũng dùng được)
+    if (globalTier >= 1 || isTestMode) {
+        musicBar.classList.remove('hidden');
+        musicNext.classList.remove('hidden');
+        musicPrev.classList.remove('hidden');
+    }
+    if (globalTier >= 2 || isTestMode) {
+        musicShuffle.classList.remove('hidden');
+    }
+    if (globalTier >= 3 || isTestMode) {
+        musicListBtn.classList.remove('hidden');
+    }
+
+    // Mascot: Timer
+    // Đã chuyển sang dạng nhấn trực tiếp vào đồng hồ, không cần logic ẩn hiện box cũ
+}
+
+// ===== LOGIC ÂM NHẠC =====
+function playCurrentTrack() {
+    if (!isRunning) return; // Chỉ phát khi đã bấm Bắt Đầu
+    if (isYouTubeMode) {
+        if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
+        return;
+    }
+    
+    const tracks = musicGenres[currentGenre];
+    const track = tracks[currentTrackIdx];
+    nowPlaying.innerText = `Radio: ${track.name}`;
+    audioPlayer.src = track.url;
+    audioPlayer.play().catch(e => console.log("Audio block:", e));
+}
+
+function nextTrack() {
+    const tracks = musicGenres[currentGenre];
+    if (isShuffle) {
+        currentTrackIdx = Math.floor(Math.random() * tracks.length);
+    } else {
+        currentTrackIdx = (currentTrackIdx + 1) % tracks.length;
+    }
+    playCurrentTrack();
+}
+
+if (musicNext) musicNext.onclick = nextTrack;
+if (musicPrev) musicPrev.onclick = () => {
+    const tracks = musicGenres[currentGenre];
+    currentTrackIdx = (currentTrackIdx - 1 + tracks.length) % tracks.length;
+    playCurrentTrack();
+};
+if (musicShuffle) musicShuffle.onclick = () => {
+    isShuffle = !isShuffle;
+    musicShuffle.style.background = isShuffle ? '#4caf50' : '#81c784';
+    msgBox.innerText = isShuffle ? "Trộn bài: BẬT" : "Trộn bài: TẮT";
+};
+
+if (nowPlaying) nowPlaying.onclick = () => {
+    const genres = Object.keys(musicGenres);
+    const gIdx = (genres.indexOf(currentGenre) + 1) % genres.length;
+    currentGenre = genres[gIdx];
+    currentTrackIdx = 0;
+    msgBox.innerText = `Thể loại: ${currentGenre.toUpperCase()}`;
+    playCurrentTrack();
+};
+
+// ===== YOUTUBE IFRAME API (TIER 3) =====
+function loadYouTubeAPI() {
+    if (window.YT) return;
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+}
+
+window.onYouTubeIframeAPIReady = () => {
+    ytPlayer = new YT.Player('yt-player-container', {
+        height: '1', width: '1',
+        playerVars: { 'autoplay': 0, 'controls': 0, 'disablekb': 1, 'origin': window.location.origin },
+        events: {
+            'onReady': () => console.log("YT Player Ready"),
+            'onStateChange': onPlayerStateChange
+        }
+    });
+};
+
+function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.PLAYING) {
+        const data = ytPlayer.getVideoData();
+        nowPlaying.innerText = `YT: ${data.title}`;
+    }
+    if (event.data === YT.PlayerState.ENDED && isShuffle) {
+        const count = ytPlayer.getPlaylist()?.length || 0;
+        if (count > 0) {
+            const nextIdx = Math.floor(Math.random() * count);
+            ytPlayer.playVideoAt(nextIdx);
+        }
+    }
+}
+
+// ===== POP-UP QUẢN LÝ ALBUM =====
+const musicModal = document.getElementById('music-modal');
+const albumListEl = document.getElementById('album-list');
+const ytInput = document.getElementById('yt-link-input');
+const addAlbumBtn = document.getElementById('btn-add-album');
+
+if (musicListBtn) musicListBtn.onclick = () => {
+    musicModal.classList.remove('hidden');
+    renderAlbumList();
+};
+const closeMusicBtn = document.getElementById('btn-close-music');
+if (closeMusicBtn) closeMusicBtn.onclick = () => musicModal.classList.add('hidden');
+
+if (addAlbumBtn) addAlbumBtn.onclick = async () => {
+    const url = ytInput.value.trim();
+    if (!url) return;
+    
+    let listId = "";
+    if (url.includes('list=')) {
+        listId = new URLSearchParams(new URL(url).search).get('list');
+    }
+    
+    if (listId) {
+        let title = "Album Mới";
+        try {
+            const resp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/playlist?list=${listId}&format=json`);
+            const data = await resp.json();
+            title = data.title;
+        } catch(e) {}
+        
+        favoriteAlbums.push({ id: listId, title: title });
+        localStorage.setItem('yt_albums', JSON.stringify(favoriteAlbums));
+        ytInput.value = "";
+        renderAlbumList();
+    } else {
+        alert("Boss ơi, link này không phải Playlist YouTube Music rồi!");
+    }
+};
+
+function renderAlbumList() {
+    if (!albumListEl) return;
+    albumListEl.innerHTML = '';
+    favoriteAlbums.forEach((alb, idx) => {
+        const div = document.createElement('div');
+        div.className = 'album-item';
+        div.title = "Click để phát Album này";
+        div.innerHTML = `
+            <span>💿 ${alb.title}</span>
+            <div class="album-actions" style="display:flex; gap:12px; align-items:center;">
+                <svg width="20" height="20" viewBox="0 -960 960 960" fill="#6750A4"><path d="M320-200v-560l440 280-440 280Z"/></svg>
+                <div class="del-btn" onclick="deleteAlbum(${idx}, event)">
+                    <svg width="20" height="20" viewBox="0 -960 960 960" fill="#B3261E"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
+                </div>
+            </div>
+        `;
+        div.onclick = () => loadAlbum(alb.id);
+        albumListEl.appendChild(div);
+    });
+}
+
+window.deleteAlbum = (idx, e) => {
+    e.stopPropagation();
+    favoriteAlbums.splice(idx, 1);
+    localStorage.setItem('yt_albums', JSON.stringify(favoriteAlbums));
+    renderAlbumList();
+};
+
+function loadAlbum(listId) {
+    if (!listId) return;
+    isYouTubeMode = true;
+    audioPlayer.pause();
+    
+    msgBox.innerText = "Đã lưu Album YouTube Music!";
+    
+    if (ytPlayer && typeof ytPlayer.loadPlaylist === 'function') {
+        ytPlayer.loadPlaylist({
+            listType: 'playlist',
+            list: listId,
+            index: 0,
+            startSeconds: 0
+        });
+        musicModal.classList.add('hidden');
+        if (isShuffle) ytPlayer.setShuffle(true);
+        // Chỉ tự động phát nếu Timer đang chạy
+        if (isRunning) ytPlayer.playVideo(); 
+    } else {
+        loadYouTubeAPI();
+        setTimeout(() => loadAlbum(listId), 1000);
+    }
+}
+
+// ===== LOGIC MASCOT POMODORO =====
+const taskData = {
+    egg: { time: 15 * 60, emojis: ['🥚', '🐣', '🐥', '🐔', '🐉', '🐲'], name: 'Hỏa Rồng' },
+    plant: { time: 25 * 60, emojis: ['🌱', '🌿', '🪴', '🌳', '🌹', '🌺'], name: 'Hoa Lofi' },
+    house: { time: 45 * 60, emojis: ['🧱', '🪵', '🏗️', '🏠', '🏰', '🏯'], name: 'Lâu Đài Vàng' },
+    potion: { time: 60 * 60, emojis: ['💧', '🧪', '🥘', '🔮', '🧪', '🧙‍♂️'], name: 'Tiên Đan' }
+};
+
+let timeLeft = 1500;
+let isRunning = false;
 let isBreakMode = false;
-const BREAK_TIME = 5 * 60; // Nghỉ 5 phút theo chuẩn y khoa Pomodoro
+let currentTask = 'plant';
+let POMO_TIME = 1500;
+
+if (timePlus) timePlus.onclick = () => {
+    if (isRunning) return;
+    timeLeft += 60;
+    if (timeLeft > 180 * 60) timeLeft = 180 * 60;
+    updateDisplay();
+    syncPomoToMain();
+};
+if (timeMinus) timeMinus.onclick = () => {
+    if (isRunning) return;
+    timeLeft -= 60;
+    if (timeLeft < 60) timeLeft = 60;
+    POMO_TIME = timeLeft;
+    updateDisplay();
+    syncPomoToMain();
+};
+
+function syncPomoToMain() {
+    ipcRenderer.send('pomo-command', 'reset', { 
+        time: timeLeft,
+        type: currentTask
+    });
+}
+
+if (taskSelector) {
+    taskSelector.addEventListener('change', (e) => {
+        currentTask = e.target.value;
+        timeLeft = taskData[currentTask].time;
+        POMO_TIME = timeLeft; 
+        updateDisplay();
+        syncPomoToMain();
+    });
+}
+
+// ===== REWARDS & SYNC =====
+ipcRenderer.on('pomo-sync', (e, state) => {
+    timeLeft = state.timeLeft;
+    isRunning = state.isRunning;
+    isBreakMode = state.isBreak;
+    currentTask = state.type;
+    isTestMode = state.isTestMode || false;
+    
+    checkPetPrivileges();
+
+    if (isRunning) {
+        if (POMO_TIME <= 0) POMO_TIME = taskData[currentTask]?.time || 1500; 
+        taskSelector.disabled = true;
+        stageDisplay.classList.add('breath');
+        playBtn.innerText = 'Dừng';
+        playBtn.classList.replace('btn-start', 'btn-stop');
+    } else {
+        taskSelector.disabled = false;
+        stageDisplay.classList.remove('breath');
+        playBtn.innerText = 'Bắt Đầu';
+        playBtn.classList.replace('btn-stop', 'btn-start');
+    }
+    
+    if (timeLeft <= 0 && isRunning === false && state && state.startTime !== 0) {
+        finishCycleLocally();
+    }
+
+    if (isBreakMode) updateDisplayForBreak();
+    else updateDisplay();
+});
 
 function updateDisplay() {
     const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
     const s = (timeLeft % 60).toString().padStart(2, '0');
     timerDisplay.innerText = `${m}:${s}`;
 
-    const emojis = taskData[currentTask].emojis;
-    const percent = 1 - (timeLeft / POMO_TIME);
+    const taskInfo = taskData[currentTask] || taskData['plant'];
+    const emojis = taskInfo.emojis;
+    const baseTime = (isRunning && POMO_TIME > 0) ? POMO_TIME : taskInfo.time;
+    const percent = 1 - (timeLeft / baseTime); 
 
     let idx = Math.floor(percent * emojis.length);
     if (timeLeft > 0 && idx >= emojis.length - 1) idx = emojis.length - 2;
     if (timeLeft === 0) idx = emojis.length - 1;
+    if (idx < 0) idx = 0;
 
-    stageDisplay.innerText = emojis[idx];
+    stageDisplay.innerText = emojis[idx] || '🌱';
 }
 
 function updateDisplayForBreak() {
     const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
     const s = (timeLeft % 60).toString().padStart(2, '0');
     timerDisplay.innerText = `${m}:${s}`;
-    stageDisplay.innerText = '☕'; // Tách Trà Giải Lao
+    stageDisplay.innerText = '☕'; 
 }
 
-function finishCycle() {
-    clearInterval(timer);
-    isRunning = false;
+function finishCycleLocally() {
     stageDisplay.classList.remove('breath');
     audioPlayer.pause();
-    taskSelector.disabled = false; // Cho phep đổi Theme cày cuốc thoải mái lúc đứng yên
+    if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+    taskSelector.disabled = false;
 
     if (!isBreakMode) {
-        // Vừa chốt Đơn Chu kỳ Cày cuốc:
-        const emojis = taskData[currentTask].emojis;
-        timerDisplay.innerText = `00:00`;
-        stageDisplay.innerText = emojis[emojis.length - 1]; // Khoá khung hình ở Sinh vật xịn nhất
-
-        // TRAO THƯỞNG RPG
-        let rewardType = 'POMODORO_25';
-        if (taskData[currentTask].time >= 40 * 60) rewardType = 'POMODORO_50';
-        
-        const result = RPG.addReward(rewardType);
-        
+        const rewardKey = (timeLeft >= 40 * 60) ? 'POMODORO_50' : 'POMODORO_25';
+        const result = RPG.addReward(rewardKey);
         if (result) {
             msgBox.innerText = `+${result.gainedXP} EXP | +${result.gainedCoins} Xu ! 🎇`;
-        } else {
-             msgBox.innerText = `Được 1 ${taskData[currentTask].name}! 🎇`;
         }
-
-        playBtn.innerText = 'Giải Lao 5p';
-
-        isBreakMode = true;
-        timeLeft = BREAK_TIME; // Mồi trước 5 Phút nhưng KHÔNG bắt đầu ngay mà đợi người dùng bấm Play
-    } else {
-        // Vừa chốt Đơn Giải Lao:
-        msgBox.innerText = `Nghỉ đẫ chưa? Cày tiếp!`;
-        playBtn.innerText = 'Tiếp Tục';
-
-        isBreakMode = false;
-        timeLeft = taskData[currentTask].time;
-        updateDisplay(); // Phục hồi hình dạng Mầm Cây Level 1 để báo hiệu Trạng Thái Chuẩn bị Cày Focus
-    }
-    syncPomoState();
-}
-
-function syncPomoState() {
-    let state = 'idle';
-    if (isRunning) {
-        state = isBreakMode ? 'break' : 'work';
-    }
-    localStorage.setItem('pomo_status', state);
-}
-
-function tick() {
-    if (timeLeft > 0) {
-        timeLeft--;
-        if (isBreakMode) updateDisplayForBreak();
-        else updateDisplay();
-    } else {
-        finishCycle();
     }
 }
-
-taskSelector.addEventListener('change', (e) => {
-    currentTask = e.target.value;
-    POMO_TIME = taskData[currentTask].time;
-    timeLeft = POMO_TIME;
-    isBreakMode = false; // Ngắt Chế độ Nghỉ nếu họ rắp tâm chọn cày Đồ thị Khác.
-
-    updateDisplay();
-    msgBox.innerText = `Chờ lệnh...`;
-    playBtn.innerText = 'Bắt Đầu';
-    syncPomoState();
-});
 
 playBtn.addEventListener('click', () => {
-    if (!isRunning && timeLeft > 0) {
-        isRunning = true;
-        taskSelector.disabled = true; // Khóa thay đổi
-        timer = setInterval(tick, 1000);
-
-        if (isBreakMode) {
-            playBtn.innerText = 'Dừng Nghỉ';
-            msgBox.innerText = 'Vươn vai thả lỏng...';
-            updateDisplayForBreak(); // Chuyển mặt thỏ thành Cốc Trà Coffee
-            stageDisplay.classList.add('breath');
-        } else {
-            playBtn.innerText = 'Dừng';
-            msgBox.innerText = 'Đang tiến hóa...';
-            stageDisplay.classList.add('breath');
-
-            // Random Radio Music nạp đạn
-            if (timeLeft === POMO_TIME) {
-                const randomRadio = musicRadios[Math.floor(Math.random() * musicRadios.length)];
-                audioPlayer.src = randomRadio;
-            }
-            audioPlayer.play().catch(e => console.log("Audio block:", e));
-        }
-
-    } else if (isRunning) {
-        isRunning = false;
-        clearInterval(timer);
-
-        if (isBreakMode) {
-            playBtn.innerText = 'Tiếp Nghỉ';
-            msgBox.innerText = 'Vẫn chưa hết giải lao!';
-        } else {
-            playBtn.innerText = 'Tiếp';
-            msgBox.innerText = 'Đang lười hả?';
-            audioPlayer.pause();
-        }
-        stageDisplay.classList.remove('breath');
+    if (!isRunning) {
+        POMO_TIME = timeLeft; 
+        ipcRenderer.send('pomo-command', 'start', { time: timeLeft, isBreak: isBreakMode, type: currentTask });
+        playCurrentTrack();
+    } else {
+        ipcRenderer.send('pomo-command', 'pause');
+        audioPlayer.pause();
+        if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
     }
-    syncPomoState();
 });
 
 resetBtn.addEventListener('click', () => {
-    let isPenalty = false;
-    if (!isBreakMode && timeLeft < POMO_TIME && timeLeft > 0) {
-        isPenalty = true;
-        if (typeof RPG !== 'undefined') {
-            RPG.state.currentXP -= 5;
-            if (RPG.state.currentXP < 0) RPG.state.currentXP = 0;
-            RPG.save();
-        }
-        msgBox.innerText = 'Trừ 5 EXP! 🥀';
-    } else {
-        msgBox.innerText = 'Đã đặt lại!';
-    }
-
-    isRunning = false;
-    isBreakMode = false; // Cancel Giải Lao ngay lập tức
-    clearInterval(timer);
-    taskSelector.disabled = false; // Mở khoá đổi cày
-
-    currentTask = taskSelector.value;
-    POMO_TIME = taskData[currentTask].time;
-    timeLeft = POMO_TIME;
-
-    playBtn.innerText = 'Bắt Đầu';
-    stageDisplay.classList.remove('breath');
-    
-    if (isPenalty) {
-        stageDisplay.innerText = '🥀';
-    } else {
-        updateDisplay();
-    }
-
+    ipcRenderer.send('pomo-command', 'reset', { time: taskData[currentTask].time });
     audioPlayer.pause();
-    syncPomoState();
+    if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
 });
 
-updateDisplay();
+ipcRenderer.on('weather-impact', (e, data) => {
+    if (data.fx.includes('rain')) currentGenre = 'nature';
+    else currentGenre = 'lofi';
+    if (!isYouTubeMode && isRunning) playCurrentTrack();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const inlineInput = document.getElementById('inline-timer-input');
+    
+    // Nhấn vào số để hiện input chỉnh phút
+    timerDisplay.onclick = () => {
+        if (isRunning) return;
+        timerDisplay.classList.add('hidden');
+        inlineInput.classList.remove('hidden');
+        inlineInput.value = Math.floor(timeLeft / 60);
+        inlineInput.focus();
+    };
+
+    const saveInlineTime = () => {
+        const val = parseInt(inlineInput.value);
+        if (val >= 1 && val <= 180) {
+            timeLeft = val * 60;
+            POMO_TIME = timeLeft;
+            updateDisplay();
+            syncPomoToMain();
+        }
+        inlineInput.classList.add('hidden');
+        timerDisplay.classList.remove('hidden');
+    };
+
+    inlineInput.onblur = saveInlineTime;
+    inlineInput.onkeydown = (e) => { if (e.key === 'Enter') saveInlineTime(); };
+
+    RPG.init();
+    checkPetPrivileges();
+    // loadYouTubeAPI(); // Vô hiệu hóa tạm thời theo yêu cầu của Boss
+    updateDisplay();
+});
+
+ipcRenderer.send('pomo-command', 'sync');

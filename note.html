@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <script>window.onerror = function  (m, s, l, c, e) { require('fs').writeFileSync('n_error.log', m + ' ' + s + ' ' + l); }</script>
+    <script>window.onerror = function (m, s, l, c, e) { require('fs').writeFileSync('n_error.log', m + ' ' + s + ' ' + l); }</script>
     <script src="rpg-system.js"></script>
 
     <div class="note-container">
@@ -46,7 +46,8 @@
                 <!-- Tập sách = Nút thêm folder -->
                 <img src="books.png" id="btn-add-folder" class="custom-book-img" title="Thêm danh sách" />
 
-                <img src="rabbit1.png" id="rabbit-mascot" class="rabbit-mascot" alt="Thỏ" title="Click để đổi hành động!" />
+                <img src="rabbit-sleep.gif" id="rabbit-mascot" class="rabbit-mascot" alt="Thỏ" title="Click để đổi hành vụ!" />
+
             </div>
             <div class="desk-front"></div>
         </div>
@@ -61,33 +62,45 @@
             </svg>
         </div>
 
-        <!-- GIAO DIỆN TASK -->
+        <!-- GIAO DIỆN TASK (CLASSIC RESTORED) -->
         <div id="note-view" class="overlay hidden">
             <div class="task-paper">
-                <button id="btn-close-note" class="close-btn" title="Đóng">X</button>
-                <button id="btn-delete-folder" class="delete-folder-btn" title="Xóa sổ này">🗑️</button>
+                <button id="btn-close-note" class="close-btn">X</button>
+                <button id="btn-delete-folder" class="delete-folder-btn">🗑️</button>
+                <button id="btn-change-color" class="change-color-btn hidden">🎨</button>
+                
                 <div class="pin"></div>
                 <h2 id="note-title" class="pixel-text">Tên Sổ</h2>
+                
+                <div id="edit-color-picker" class="hidden">
+                    <div id="edit-color-options"></div>
+                </div>
+
                 <div class="task-list" id="task-list"></div>
 
-                
                 <div class="add-task-container">
-                    <input type="text" id="input-new-task" placeholder="Nhập task mới...">
-                    <button class="btn-pixel-add" id="btn-add-task">THÊM</button>
+                    <input type="text" id="input-new-task" placeholder="(thêm việc mới của Boss...)">
+                    <button id="btn-add-task" class="btn-pixel-add">THÊM</button>
                 </div>
-                <button id="btn-complete-folder" class="btn-complete-folder">NỘP SỔ & NHẬN THƯỞNG</button>
 
+                <button id="btn-complete-folder" class="btn-complete-folder">NỘP SỔ & NHẬN THƯỞNG</button>
             </div>
         </div>
 
-        <!-- MODAL TẠO FOLDER -->
+        <!-- MODAL TẠO FOLDER (CLASSIC RESTORED) -->
         <div id="create-modal" class="overlay hidden">
             <div class="pixel-modal">
                 <h3 class="pixel-text">Tạo Sổ Mới</h3>
-                <input type="text" id="input-folder-name" placeholder="Tên sổ...">
+                <input type="text" id="input-folder-name" placeholder="Tên sổ mới của Boss..." autocomplete="off">
+                
+                <div id="color-picker-container" class="color-picker hidden" style="margin-bottom: 20px;">
+                    <div class="pixel-text" style="font-size:18px; color: #5d4037; margin-bottom: 8px;">CHỌN MÀU BÌA:</div>
+                    <div id="color-options" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;"></div>
+                </div>
+
                 <div class="modal-actions">
-                    <button class="btn-pixel cancel" id="btn-cancel-folder">HỦY</button>
-                    <button class="btn-pixel ok" id="btn-confirm-folder">TẠO</button>
+                    <button class="btn-pixel cancel" id="btn-cancel-folder">HỦY BỎ</button>
+                    <button class="btn-pixel ok" id="btn-confirm-folder">TẠO SỔ</button>
                 </div>
             </div>
         </div>

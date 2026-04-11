@@ -2,6 +2,15 @@
 const { ipcRenderer } = require('electron');
 
 let currentListId = null;
+let folderColors = JSON.parse(localStorage.getItem('folder_colors') || '{}');
+let selectedColorIdx = null;
+const PALETTE = [
+    { bg: '#fff59d', border: '#fbc02d' }, { bg: '#ffcc80', border: '#ef6c00' },
+    { bg: '#a5d6a7', border: '#2e7d32' }, { bg: '#90caf9', border: '#1565c0' },
+    { bg: '#ce93d8', border: '#6a1b9a' }, { bg: '#f48fb1', border: '#ad1457' },
+    { bg: '#ff80ab', border: '#c51162' }, { bg: '#b9f6ca', border: '#00c853' },
+    { bg: '#ffff8d', border: '#ffd600' }, { bg: '#80d8ff', border: '#0091ea' }
+];
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Tải RPG System UI
@@ -20,12 +29,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 const note = document.createElement('div');
                 note.className = 'folder-note';
 
-                const colors = ['#fff59d', '#ffcc80', '#a5d6a7', '#90caf9', '#ce93d8', '#f48fb1'];
-                const borders = ['#fbc02d', '#ef6c00', '#2e7d32', '#1565c0', '#6a1b9a', '#ad1457'];
+                // BẢNG MÀU CƠ BẢN
+                let colors = ['#fff59d', '#ffcc80', '#a5d6a7', '#90caf9', '#ce93d8', '#f48fb1'];
+                let borders = ['#fbc02d', '#ef6c00', '#2e7d32', '#1565c0', '#6a1b9a', '#ad1457'];
+                
+                // ĐẶC QUYỀN THỎ TRĂNG (BUNNY): Màu Pastel Premium
+                const bunnyTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('bunny') : 0;
+                if (bunnyTier >= 1) {
+                    // Tier 1 đã bắt đầu có màu mới
+                    colors.push('#e1f5fe', '#f3e5f5', '#efebe9', '#e8f5e9'); 
+                    borders.push('#0288d1', '#7b1fa2', '#5d4037', '#388e3c');
+                }
+                if (bunnyTier >= 2) {
+                    // Tier 2 thêm các màu neon lofi cực chất
+                    colors.push('#ff80ab', '#b9f6ca', '#ffff8d', '#80d8ff');
+                    borders.push('#c51162', '#00c853', '#ffd600', '#0091ea');
+                }
+
                 const colorIndex = i % colors.length;
-                note.style.backgroundColor = colors[colorIndex];
+                
+                // ĐẶC QUYỀN THỎ TRĂNG (BUNNY): Ưu tiên màu thủ công (Tier 2+)
+                const custom = folderColors[list.id];
+                if (custom) {
+                    note.style.backgroundColor = custom.bg;
+                    note.style.borderBottomColor = note.style.borderRightColor = custom.border;
+                } else {
+                    note.style.backgroundColor = colors[colorIndex];
+                    note.style.borderBottomColor = note.style.borderRightColor = borders[colorIndex];
+                }
                 note.style.borderTopColor = note.style.borderLeftColor = '#fff';
-                note.style.borderBottomColor = note.style.borderRightColor = borders[colorIndex];
 
                 const rot = Math.floor(Math.random() * 6) - 3;
                 note.style.transform = `rotate(${rot}deg)`;
@@ -72,7 +104,43 @@ document.addEventListener('DOMContentLoaded', () => {
         createModal.classList.remove('hidden');
         ipcRenderer.send('request-focus', 'note', true);
         inputFolderName.focus();
+
+        // HIỂN THỊ CHỌN MÀU NẾU THỎ TIER 2+
+        const pickerContainer = document.getElementById('color-picker-container');
+        const bunnyTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('bunny') : 0;
+        if (bunnyTier >= 2) {
+            pickerContainer.classList.remove('hidden');
+            selectedColorIdx = 0; // Mặc định màu đầu tiên
+            renderColorPicker();
+        } else {
+            pickerContainer.classList.add('hidden');
+            selectedColorIdx = null;
+        }
     });
+
+    function renderColorPicker() {
+        const container = document.getElementById('color-options');
+        if (!container) return;
+        container.innerHTML = '';
+        PALETTE.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'color-option' + (selectedColorIdx === idx ? ' active' : '');
+            div.style.backgroundColor = item.bg;
+            div.onclick = () => {
+                selectedColorIdx = idx;
+                renderColorPicker();
+            };
+            container.appendChild(div);
+        });
+    }
+
+    function showNoteToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'note-toast';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
 
     btnCancelFolder.addEventListener('click', () => {
         createModal.classList.add('hidden');
@@ -85,7 +153,14 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 btnConfirmFolder.disabled = true;
                 btnConfirmFolder.textContent = '...';
-                await ipcRenderer.invoke('g-add-tasklist', title);
+                const newList = await ipcRenderer.invoke('g-add-tasklist', title);
+                
+                // LƯU MÀU NẾU CÓ CHỌN
+                if (newList && newList.id && selectedColorIdx !== null) {
+                    folderColors[newList.id] = PALETTE[selectedColorIdx];
+                    localStorage.setItem('folder_colors', JSON.stringify(folderColors));
+                }
+
                 createModal.classList.add('hidden');
                 ipcRenderer.send('request-focus', 'note', false);
                 loadTaskLists();
@@ -111,6 +186,17 @@ document.addEventListener('DOMContentLoaded', () => {
         noteView.classList.remove('hidden');
         inputNewTask.focus();
         ipcRenderer.send('request-focus', 'note', true);
+
+        // HIỆN NÚT ĐỔI MÀU NẾU THỎ TIER 3
+        const btnChangeColor = document.getElementById('btn-change-color');
+        const editColorPicker = document.getElementById('edit-color-picker');
+        const bunnyTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('bunny') : 0;
+        
+        if (btnChangeColor) {
+            if (bunnyTier >= 3) btnChangeColor.classList.remove('hidden');
+            else btnChangeColor.classList.add('hidden');
+        }
+        if (editColorPicker) editColorPicker.classList.add('hidden');
         
         // Instant load from cache
         loadGoogleTasks(true);
@@ -156,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 item.innerHTML = `
                     <div class="task-checkbox"></div>
-                    <div class="task-title">${task.title}</div>
+                    <div class="task-title">${task.title} <span style="opacity:0.5; font-size:12px; margin-left: 5px;">✍️</span></div>
                 `;
 
                 item.addEventListener('click', () => toggleTaskStatus(task, currentListId, item));
@@ -228,7 +314,17 @@ async function toggleTaskStatus(task, listId, itemElement) {
             if (!rewardedTasks.includes(task.id) && typeof window.RPG !== 'undefined') {
                 rewardedTasks.push(task.id);
                 localStorage.setItem('rewarded_tasks', JSON.stringify(rewardedTasks));
-                window.RPG.addReward('TASK_COMPLETE');
+                
+                // ĐẶC QUYỀN THỎ TRĂNG (BUNNY): Tier 3 - Lucky Buff (10% cơ hội x2 Xu)
+                let luckyBonus = 0;
+                const bunnyTier = window.RPG.getPetTier ? window.RPG.getPetTier('bunny') : 0;
+                
+                if (bunnyTier === 3 && Math.random() < 0.1) {
+                    luckyBonus = 10; // Thưởng thêm 10 xu nếu may mắn
+                    showNoteToast("🐰✨ Thỏ Trăng mang lại vận may: Gấp đôi Xu!");
+                }
+                
+                window.RPG.addReward('TASK_COMPLETE', luckyBonus);
                 if (typeof updateRPGUI === 'function') updateRPGUI();
             }
         } else {
@@ -275,7 +371,7 @@ async function toggleTaskStatus(task, listId, itemElement) {
             item.className = `task-item`;
             item.innerHTML = `
                 <div class="task-checkbox"></div>
-                <div class="task-title">${title} <span style="opacity:0.5; font-size:12px;">...</span></div>
+                <div class="task-title">${title}</div>
             `;
             taskListDiv.appendChild(item);
             taskListDiv.scrollTop = taskListDiv.scrollHeight;
@@ -294,10 +390,24 @@ async function toggleTaskStatus(task, listId, itemElement) {
         }
     }
 
-    btnAddTask.addEventListener('click', handleAddTask);
+    if (btnAddTask) {
+        btnAddTask.addEventListener('click', handleAddTask);
+    }
     inputNewTask.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAddTask(); });
 
-    // Gắn window focus để update điểm chéo ứng dụng & sync dữ liệu
+    // ESC để đóng overlay
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (!createModal.classList.contains('hidden')) {
+                createModal.classList.add('hidden');
+                ipcRenderer.send('request-focus', 'note', false);
+            } else if (!noteView.classList.contains('hidden')) {
+                noteView.classList.add('hidden');
+                ipcRenderer.send('request-focus', 'note', false);
+            }
+        }
+    });
+
     window.addEventListener('focus', () => {
         if (typeof window.RPG !== 'undefined') {
             window.RPG.init();
@@ -311,83 +421,10 @@ async function toggleTaskStatus(task, listId, itemElement) {
     });
 
     function updateRPGUI() {
-
         const coinDisplay = document.getElementById('rpg-coins-display');
-
         if (coinDisplay) coinDisplay.textContent = window.RPG.state.coins;
     }
 
-    
-// HỆ THỐNG TINH LINH PET (SPRITES) KÈM LỜI THOẠI
-    const petMascot = document.getElementById('pet-mascot');
-    const speechBubble = document.getElementById('speech-bubble');
-
-    const petQuotes = [
-        "Chăm chỉ làm việc nha chủ nhân! 🍄",
-        "Nấm lùn đang tiếp sức nè! ✨",
-        "Đừng quên uống nước nhé! 💧",
-        "Tích lũy XP để tui mau lớn! 🌿",
-        "Có nhiều thẻ màu trên bảng bần đẹp quá! 🎨",
-        "Hoàn thành nhiệm vụ để tui biểu diễn nha! 🎈",
-        "Buồn ngủ ghê... zZz...",
-        "Úm ba la, xua tan mệt mỏi! 🌟"
-    ];
-
-    if (petMascot && speechBubble) {
-        // Khởi tạo State ban đầu dựa trên Level của RPG
-        let stage = 1; 
-        
-        function updatePetStage() {
-            if (typeof window.RPG === 'undefined') return;
-            const lvl = window.RPG.state.level || 1;
-            if (lvl >= 30) stage = 3; // Hươu
-            else if (lvl >= 15) stage = 2; // Sóc
-            else stage = 1; // Nấm
-            
-            // Xóa hết class cũ
-            petMascot.className = 'pet-mascot pet-stage' + stage + '-idle';
-        }
-        
-        // Gọi lần đầu
-        setTimeout(updatePetStage, 500);
-        window.addEventListener('rpg-update', updatePetStage); // Listen ngầm
-        
-        petMascot.addEventListener('click', () => {
-            // Đổi Idle sang Walk/Hop trong vài giây
-            const actionClass = (stage === 1) ? 'hop' : (stage === 3 ? 'walk' : 'walk');
-            petMascot.className = 'pet-mascot pet-stage' + stage + '-' + actionClass;
-
-            // Nhảy nhẹ một cái khi click
-            petMascot.style.transform = 'translateY(-10px)';
-            setTimeout(() => {
-                petMascot.style.transform = 'translateY(0)';
-            }, 150);
-            
-            setTimeout(() => {
-                petMascot.className = 'pet-mascot pet-stage' + stage + '-idle';
-            }, 2500);
-
-            showRandomQuote();
-        });
-
-        function showRandomQuote() {
-            const randomIndex = Math.floor(Math.random() * petQuotes.length);
-            speechBubble.textContent = petQuotes[randomIndex];
-            speechBubble.style.display = 'block';
-            speechBubble.classList.remove('hidden');
-
-            setTimeout(() => {
-                speechBubble.classList.add('hidden');
-            }, 4000);
-        }
-
-        setInterval(() => {
-            if (document.getElementById('note-view').classList.contains('hidden') &&
-                document.getElementById('create-modal').classList.contains('hidden')) {
-                showRandomQuote();
-            }
-        }, 25000);
-    }
 
     const completeFolderBtn = document.getElementById('btn-complete-folder');
     const stampObj = document.getElementById('stamp-animation');
@@ -411,6 +448,18 @@ async function toggleTaskStatus(task, listId, itemElement) {
             // Award BIG money
             if (typeof window.RPG !== 'undefined') {
                 window.RPG.addReward('FOLDER_COMPLETE');
+                
+                // ĐẶC QUYỀN THỎ TRĂNG (BUNNY): Tier 2 - Thưởng thêm EXP cho Pet
+                const bunnyTier = window.RPG.getPetTier ? window.RPG.getPetTier('bunny') : 0;
+                if (bunnyTier >= 2) {
+                    let petData = JSON.parse(localStorage.getItem('rpg_pet') || '{}');
+                    if (petData.species === 'bunny') {
+                        petData.exp += 50; // Thưởng 50 EXP trực tiếp cho Thỏ
+                        localStorage.setItem('rpg_pet', JSON.stringify(petData));
+                        showNoteToast("🐰 Thỏ Trăng nhận thêm 50 XP từ sự chăm chỉ!");
+                    }
+                }
+                
                 if (typeof updateRPGUI === 'function') updateRPGUI();
             }
 
@@ -438,6 +487,52 @@ async function toggleTaskStatus(task, listId, itemElement) {
 
             completeFolderBtn.disabled = true;
             completeFolderBtn.textContent = "ĐÃ HOÀN THÀNH SỔ!";
+        });
+    }
+
+    // =============== ĐẶC QUYỀN THỎ TIER 3: ĐỔI MÀU LINH HOẠT ===============
+    const btnChangeColor = document.getElementById('btn-change-color');
+    const editColorPicker = document.getElementById('edit-color-picker');
+
+    if (btnChangeColor) {
+        btnChangeColor.addEventListener('click', () => {
+            editColorPicker.classList.toggle('hidden');
+            if (!editColorPicker.classList.contains('hidden')) {
+                renderEditColorPicker();
+            }
+        });
+    }
+
+    function renderEditColorPicker() {
+        const container = document.getElementById('edit-color-options');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        container.style.display = 'flex';
+        container.style.flexWrap = 'wrap';
+        container.style.gap = '8px';
+        container.style.justifyContent = 'center';
+        container.style.padding = '10px';
+        container.style.background = 'rgba(0,0,0,0.03)';
+        container.style.borderRadius = '4px';
+        container.style.marginBottom = '10px';
+        
+        const current = folderColors[currentListId] || {};
+        
+        PALETTE.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'color-option' + (current.bg === item.bg ? ' active' : '');
+            div.style.backgroundColor = item.bg;
+            div.style.width = '24px';
+            div.style.height = '24px';
+            
+            div.onclick = () => {
+                folderColors[currentListId] = item;
+                localStorage.setItem('folder_colors', JSON.stringify(folderColors));
+                renderEditColorPicker();
+                loadTaskLists(); 
+            };
+            container.appendChild(div);
         });
     }
 

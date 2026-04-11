@@ -78,7 +78,7 @@ html, body {
     text-align: center;
     box-shadow: 7px 7px 0 rgba(0,0,0,0.1);
     position: relative;
-    
+    zoom: 0.8;
     image-rendering: pixelated;
 }
 
@@ -165,19 +165,21 @@ html, body {
     flex: 1;
     min-width: 0;
     background: white;
-    border: 2px solid var(--border);
-    border-radius: 16px;
-    padding: 2px 8px;
+    border: 3px solid var(--border);
+    border-radius: 12px;
+    padding: 1px 6px;
     font-family: 'VT323', monospace;
-    font-size: 15px;
+    font-size: 14px;
     color: var(--text);
     cursor: pointer;
     outline: none;
-    
+    height: 28px;
+    box-sizing: border-box;
 }
 
 #city-select:focus {
     border-color: #e91e7a;
+    box-shadow: 0 0 3px rgba(233, 30, 122, 0.3);
 }
 
 .char-box {
@@ -223,20 +225,23 @@ html, body {
 }
 
 .temp {
-    font-size: 48px;
+    font-size: 52px;
     color: var(--text);
     margin: 0;
-    line-height: 1;
+    line-height: 0.9;
     font-weight: bold;
     cursor: pointer;
-    
     transition: color 0.15s, transform 0.15s;
-    display: inline-block;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    font-family: 'VT323', monospace;
 }
 
 .temp:hover {
     color: #c2185b;
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
 
 .status {
@@ -288,7 +293,7 @@ html, body {
 
 #view-forecast.show {
     display: block;
-    animation: slideDown 0.2s ease;
+    animation: slideDown 0.3s ease-out;
 }
 
 @keyframes slideDown {
@@ -312,16 +317,23 @@ html, body {
 
 .forecast-row {
     display: flex;
-    gap: 5px;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 4px;
 }
 
 .fc-card {
     flex: 1;
     background: var(--card-bg);
     border: 2px solid var(--accent);
-    border-radius: 10px;
-    padding: 4px 2px;
+    border-radius: 12px;
+    padding: 6px 2px;
     color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
 }
 
 .fc-day {

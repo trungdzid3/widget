@@ -1,8 +1,9 @@
-﻿const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut, powerMonitor } = require('electron');
 
 // Giảm tải lỗi nghẽn Cache đĩa khi tạo 6 cửa sổ đồ họa thủy tinh (transparent) cùng lúc
+app.setAppUserModelId('com.trungdz.pixelwidget');
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-http-cache');
 // Bật định vị gốc của Windows 10/11 (không bị phụ thuộc Google Maps API Key gây lỗi GPS)
@@ -99,6 +100,9 @@ function getBounds(name, defaultWidth, defaultHeight, defaultX, defaultY) {
             if (typeof parsed.x === 'number') {
                 bounds.x = parsed.x;
                 bounds.y = parsed.y;
+                // Ưu tiên kích thước mặc định mới để widget không bị 'dài ngoằng' vô lý
+                bounds.width = defaultWidth;
+                bounds.height = defaultHeight;
             }
         }
     } catch(e) {}
@@ -141,6 +145,56 @@ function getState() {
         pinned: { weather: false, note: false, plant: false, pet: false },
         handleStyle: 'edge'
     };
+}
+
+// --- PomoEngine State ---
+const pomoState = {
+    isRunning: false,
+    timeLeft: 1500, // 25p
+    isBreak: false,
+    type: 'egg', // egg, plant, house, potion
+    luckyBonus: 0,
+    startTime: 0
+};
+let pomoTimer = null;
+const isTestMode = process.argv.includes('--test-mode');
+
+function broadcastPomo() {
+    const wins = BrowserWindow.getAllWindows();
+    wins.forEach(w => {
+        if (!w.isDestroyed()) {
+            w.webContents.send('pomo-sync', {
+                ...pomoState,
+                isTestMode: isTestMode 
+            });
+        }
+    });
+}
+
+function startPomoTick() {
+    if (pomoTimer) clearInterval(pomoTimer);
+    pomoTimer = setInterval(() => {
+        if (pomoState.isRunning && pomoState.timeLeft > 0) {
+            pomoState.timeLeft--;
+            broadcastPomo();
+        } else if (pomoState.isRunning && pomoState.timeLeft <= 0) {
+            pomoState.isRunning = false;
+            clearInterval(pomoTimer);
+            
+            // Tự động chuyển chuẩn bị cho giai đoạn tiếp theo
+            if (!pomoState.isBreak) {
+                // Vừa xong Work -> CHUYỂN SANG BREAK
+                pomoState.isBreak = true;
+                pomoState.timeLeft = isTestMode ? 5 : 5 * 60;
+            } else {
+                // Vừa xong Break -> CHUYỂN LẠI WORK
+                pomoState.isBreak = false;
+                pomoState.timeLeft = isTestMode ? 5 : 1500;
+            }
+            
+            broadcastPomo();
+        }
+    }, 1000);
 }
 function saveState(s) {
     try { fs.writeFileSync(STATE_FILE, JSON.stringify(s)); } catch(e) {}
@@ -412,7 +466,7 @@ function createWindows() {
         return win;
     }
 
-    weatherWin = createWidget('weather', 'index.html', [327, 490, width - 600, 100], {
+    weatherWin = createWidget('weather', 'index.html', [262, 392, width - 600, 100], {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
@@ -420,27 +474,78 @@ function createWindows() {
     });
 
     const defNoteX = width - 900;
-    noteWin = createWidget('note', 'note.html', [271, 375, defNoteX, weatherWin.getBounds().y], 
+    noteWin = createWidget('note', 'note.html', [244, 338, defNoteX, weatherWin.getBounds().y], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
 
-    plantWin = createWidget('plant', 'plant.html', [271, 241, width - 350, 100], 
+    plantWin = createWidget('plant', 'plant.html', [252, 230, width - 350, 100], 
         { nodeIntegration: true, contextIsolation: false });
 
-    petWin = createWidget('pet', 'pet.html', [273, 321, width - 600, 300], 
+    petWin = createWidget('pet', 'pet.html', [246, 289, width - 600, 300], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
-    petWin.setSize(273, 321); 
+    petWin.setSize(246, 289); 
 
-    calendarWin = createWidget('calendar', 'calendar.html', [300, 400, width - 600, 600], {
-        preload: path.join(__dirname, 'preload.js'),
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: false
+    calendarWin = createWidget('calendar', 'calendar.html', [270, 360, width - 600, 600], {
+        preload: path.join(__dirname, 'preload.js')
     });
 }
 
-ipcMain.on('weather-update', (e, data) => {
-    if (petWin && !petWin.isDestroyed() && petWin.webContents) petWin.webContents.send('weather-impact', data);
-    if (plantWin && !plantWin.isDestroyed() && plantWin.webContents) plantWin.webContents.send('weather-impact', data);
+app.setAppUserModelId('com.trungdz.pixelwidget');
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
+// ĐẶC QUYỀN CÚ MÈO - TIER 3: Windows Notification (Lưới an toàn 2 lớp: 15p & 5p)
+let scheduledReminders = []; // Danh sách mốc thời gian (T-15 và T-5)
+let notifiedEventIds = new Set(); // Ghi nhớ ID đã báo để không báo trùng
+
+// Nhịp đập hệ thống: Quét mỗi 60 giây (Cực nhẹ và ổn định)
+setInterval(() => {
+    const now = Date.now();
+    for (let i = scheduledReminders.length - 1; i >= 0; i--) {
+        const r = scheduledReminders[i];
+        
+        if (now >= r.notifyAt && !notifiedEventIds.has(r.id)) {
+            const { Notification } = require('electron');
+            if (Notification.isSupported()) {
+                const notif = new Notification({
+                    title: '🦉 Cú Mèo nhắc việc (trungdz)',
+                    body: `${r.title} lúc ${r.time} (${r.type === '5p' ? '⚠️ Nhắc nhở cuối' : '🔔 Nhắc trước 15p'})`,
+                    icon: path.join(__dirname, 'Bunny_Sunny.png'),
+                    silent: false
+                });
+                notif.show();
+                notifiedEventIds.add(r.id);
+                console.log(`[Owl] Đã bắn thông báo ${r.type}: ${r.title}`);
+            }
+            scheduledReminders.splice(i, 1);
+        } else if (now >= r.notifyAt) {
+            scheduledReminders.splice(i, 1);
+        }
+    }
+    
+    if (new Date().getHours() === 4 && new Date().getMinutes() === 0) {
+        notifiedEventIds.clear();
+    }
+}, 60000);
+
+// Hàm xử lý khi máy tính tỉnh dậy (Resume / Unlock)
+function handleSystemWake() {
+    console.log('[System Wake] Đang làm mới cửa sổ và đồng bộ lại Cú Mèo...');
+    const allWins = BrowserWindow.getAllWindows();
+    allWins.forEach(w => {
+        if (!w || w.isDestroyed()) return;
+        const [wW, wH] = w.getSize();
+        w.setSize(wW, wH + 1); w.setSize(wW, wH);
+        if (w.isMinimized()) w.restore();
+        if (w.getOpacity() > 0) {
+            w.showInactive();
+            w.setAlwaysOnTop(true, 'screen-saver');
+        }
+    });
+}
+
+ipcMain.on('owl-schedule-reminders', (e, reminders) => {
+    const now = Date.now();
+    scheduledReminders = reminders.filter(r => r.notifyAt > now - 60000);
+    console.log(`[Owl] trungdz Engine: Đã nhận ${reminders.length} mốc thông báo (Gồm 15p & 5p).`);
 });
 
 ipcMain.on('rpg-state-update', (e, state) => {
@@ -532,34 +637,8 @@ app.on('second-instance', (event, commandLine, workingDirectory) => {
 });
 
 app.whenReady().then(() => {
-    function wakeUpWindows() {
-        console.log('[System Wake] Force repainting framework windows...');
-        const allWins = BrowserWindow.getAllWindows();
-        allWins.forEach(w => {
-            if (!w || w.isDestroyed()) return;
-            const [wW, wH] = w.getSize();
-            w.setSize(wW, wH + 1);
-            w.setSize(wW, wH);
-            if (w.isMinimized()) w.restore();
-            if (w.getOpacity() > 0) {
-                w.showInactive();
-                w.setAlwaysOnTop(true, 'screen-saver');
-            }
-        });
-        
-        if (handleWin && launcherWin) {
-            if (launcherWin.getOpacity() === 0) {
-                if (handleWin.isMinimized()) handleWin.restore();
-                handleWin.setOpacity(1);
-                handleWin.setIgnoreMouseEvents(false);
-                handleWin.showInactive();
-                handleWin.setAlwaysOnTop(true, 'screen-saver');
-            }
-        }
-    }
-
-    powerMonitor.on('resume', wakeUpWindows);
-    powerMonitor.on('unlock-screen', wakeUpWindows);
+    powerMonitor.on('resume', handleSystemWake);
+    powerMonitor.on('unlock-screen', handleSystemWake);
 
     globalShortcut.register('CommandOrControl+Shift+D', () => {
         toggleSmartVisibility(null);
@@ -569,7 +648,7 @@ app.whenReady().then(() => {
     createWindows();
 
     tray = new Tray(path.join(__dirname, 'Bunny_Sunny.png')); 
-    tray.setToolTip('Hệ Sinh Thái Pixel by Nashallery');
+    tray.setToolTip('Hệ Sinh Thái Pixel - trungdz Edition');
     updateTrayMenu();
 
     tray.on('right-click', () => { if (tray.contextMenu) tray.popUpContextMenu(tray.contextMenu); });
@@ -593,6 +672,34 @@ app.whenReady().then(() => {
     ipcMain.handle('g-remove-task', async (e, id, listId) => await googleService.removeTask(id, listId));
     ipcMain.handle('g-backup-rpg', async (e, data) => await googleService.backupRPG(data));
     ipcMain.handle('g-restore-rpg', async () => await googleService.restoreRPG());
+    
+    // --- PomoEngine listeners ---
+    ipcMain.on('pomo-command', (e, cmd, data) => {
+        if (cmd === 'start') {
+            pomoState.isRunning = true;
+            let time = (data && data.time !== undefined) ? data.time : pomoState.timeLeft;
+            if (isTestMode) time = 5; 
+            pomoState.timeLeft = time;
+            if (data && data.isBreak !== undefined) pomoState.isBreak = data.isBreak;
+            if (data && data.type) pomoState.type = data.type;
+            
+            startPomoTick(); 
+        } else if (cmd === 'pause') {
+            pomoState.isRunning = false;
+            if (pomoTimer) clearInterval(pomoTimer);
+        } else if (cmd === 'reset') {
+            pomoState.isRunning = false;
+            if (pomoTimer) clearInterval(pomoTimer);
+            let time = (data && data.time) ? data.time : 1500;
+            if (isTestMode) time = 5; 
+            pomoState.timeLeft = time;
+            if (data && data.type) pomoState.type = data.type;
+            pomoState.isBreak = false;
+        } else if (cmd === 'sync') {
+            broadcastPomo();
+        }
+        broadcastPomo();
+    });
     
     ipcMain.handle('get-ip-location', async () => {
         try {

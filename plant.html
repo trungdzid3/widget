@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Trạm Lofi Focus</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="plant.css">
 </head>
 <body>
@@ -14,7 +15,28 @@
             <span class="drag-handle" title="Kéo viền để di chuyển">🖐</span>
         </div>
         
-        <audio id="lofi-audio" preload="none"></audio>
+        <audio id="lofi-audio" preload="none" crossorigin="anonymous"></audio>
+
+        <!-- Music Control Bar (Cat Tier 1+) -->
+        <div id="music-bar" class="music-bar hidden">
+            <div class="music-info">
+                <div id="music-visualizer" class="visualizer">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+                <span id="now-playing" class="playing-text">Radio: Đang tải...</span>
+            </div>
+            <div class="music-btns">
+                <button id="music-prev" class="mini-btn" title="Kênh trước">◀</button>
+                <button id="music-shuffle" class="mini-btn" title="Trộn bài">
+                    <svg width="16" height="16" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-160v-80h104L537-367l57-57 127 127v-104h80v240H560Zm-400 0v-240h80v104l127-127 57 57-127 127h104v80H160Zm0-480v-240h240v80h-104l127 127-57 57-127-127v104h-80Z"/></svg>
+                </button>
+                <button id="music-next" class="mini-btn" title="Kênh tiếp">▶</button>
+                <!-- Vô hiệu hóa tạm thời theo yêu cầu của Boss -->
+                <button id="music-list" class="mini-btn" title="Quản lý Album" style="display:none">
+                    <svg width="16" height="16" viewBox="0 -960 960 960" fill="currentColor"><path d="M120-240v-80h720v80H120Zm0-200v-80h720v80H120Zm0-200v-80h720v80H120Z"/></svg>
+                </button>
+            </div>
+        </div>
 
         <div class="pomodoro">
             <select id="task-type" class="task-selector">
@@ -27,7 +49,12 @@
             <div class="main-display">
                 <div id="plant-stage" class="stage">🌱</div>
                 <div class="info-bar">
-                    <div id="timer" class="time">25:00</div>
+                    <div class="timer-wrapper">
+                        <button id="time-minus" class="time-btn hidden">-</button>
+                        <div id="timer" class="time" title="Nhấn để chỉnh phút">25:00</div>
+                        <input type="number" id="inline-timer-input" class="inline-timer-input hidden" min="1" max="180">
+                        <button id="time-plus" class="time-btn hidden">+</button>
+                    </div>
                     <div class="msg" id="pomo-msg">Chờ lệnh...</div>
                 </div>
             </div>
@@ -42,6 +69,28 @@
             </div>
         </div>
     </div>
+    </div>
+
+    <!-- Modal Quản lý Album YouTube (Cat Tier 3) -->
+    <div id="music-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="pixel-text">Quản Lý Album YouTube</h3>
+            <div class="album-input-row">
+                <input type="text" id="yt-link-input" placeholder="Dán Link Album/Playlist vào đây...">
+                <button id="btn-add-album">THÊM</button>
+            </div>
+            <div id="album-list" class="album-list">
+                <!-- Danh sách album đã lưu -->
+            </div>
+            <div class="modal-footer">
+                <button id="btn-close-music" class="btn-pixel">ĐÓNG</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- YouTube Player (Hidden) -->
+    <div id="yt-player-container" style="display:none"></div>
+
     <script src="plant.js"></script>
 </body>
 </html>

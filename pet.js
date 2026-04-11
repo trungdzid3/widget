@@ -20,12 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pm = document.getElementById('pet-main');
     const sp = document.getElementById('species-picker');
     
-    // Hide debug levelup item in production
-    const isPackaged = await ipcRenderer.invoke('is-packaged');
-    const debugItem = document.querySelector('.shop-item[onclick*="test_levelup"]');
-    if (isPackaged && debugItem) {
-        debugItem.style.display = 'none';
-        // Adjust grid or styling if needed
+    // Initial species setup
+    if (!RPG.state.ownedSpecies || RPG.state.ownedSpecies.length === 0) {
+        if (myPet.species) {
+            RPG.state.ownedSpecies = [myPet.species];
+        } else {
+            RPG.state.ownedSpecies = []; // Start fresh
+        }
+        RPG.save();
     }
 
     if (myPet.species) {
@@ -35,10 +37,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         if(pm) pm.style.display = 'none';
         if(sp) sp.style.display = 'block';
+        renderSpeciesPicker();
     }
 });
 let petInteractionState = 'random';
-let nextActionTime = Date.now() + 3000;
 
 // ===== DOM =====
 const spriteEl = document.getElementById('pet-sprite');
@@ -59,6 +61,30 @@ window.closeModals = () => {
     document.getElementById('shop-modal').style.display = 'none';
     document.getElementById('inventory-modal').style.display = 'none';
 };
+
+// Giao diện Shop: Kiểm tra nếu là Test Mode thì hiện thêm Thuốc Tiến Hóa 0đ
+function injectTestPotion() {
+    ipcRenderer.send('pomo-command', 'sync'); // Yêu cầu Main Process gửi lại state để check isTestMode
+}
+
+ipcRenderer.on('pomo-sync', (e, state) => {
+    const shopItemsContainer = document.querySelector('.shop-items');
+    if (state.isTestMode && shopItemsContainer && !document.getElementById('test-potion-item')) {
+        const testItem = document.createElement('div');
+        testItem.id = 'test-potion-item';
+        testItem.className = 'shop-item';
+        testItem.onclick = () => window.buyShopItem('test_levelup', 0, 'Siêu Thuốc Tiến Hóa (Test)', 'instant', 9999);
+        testItem.innerHTML = `
+            <div class="item-icon">🧪</div>
+            <div class="item-details">
+                <div class="item-name">Siêu Thuốc Tiến Hóa</div>
+                <div class="item-desc">Tiến hóa cực nhanh</div>
+            </div>
+            <div class="item-cost">0 Xu</div>
+        `;
+        shopItemsContainer.prepend(testItem); // Đưa lên đầu cho Boss dễ thấy
+    }
+});
 
 window.openInventory = () => {
     document.getElementById('inventory-modal').style.display = 'flex';
@@ -97,7 +123,8 @@ window.buyShopItem = (id, cost, name, type, value) => {
     if (type === 'food') {
         RPG.state.inventory.push({ id, name, type, value });
     } else if (id === 'test_levelup') {
-         myPet.exp += (getPetExpReq(myPet.lv) - myPet.exp);
+         // Tăng EXP thẳng để lên cấp
+         myPet.exp += 9999;
     } else if (id === 'box') {
          myPet.exp += 50;
     }
@@ -107,6 +134,83 @@ window.buyShopItem = (id, cost, name, type, value) => {
     setPetState('happy');
     renderPet();
 };
+
+window.buyEgg = (eggType, cost, name) => {
+    if (RPG.state.coins < cost) { showToast('❌ Không đủ Xu!'); return; }
+    
+    if (eggType === 'target') {
+        showToast('🎯 Hãy chọn Pet bạn muốn mở khóa!');
+        window.closeModals();
+        showSpeciesPicker(true); // targeted mode
+        return;
+    }
+
+    // Random Egg Logic
+    RPG.state.coins -= cost;
+    const allKeys = Object.keys(PET_SPECIES);
+    const rolled = allKeys[Math.floor(Math.random() * allKeys.length)];
+    
+    revealEgg(rolled, cost);
+};
+
+function revealEgg(species, costSpent) {
+    window.closeModals();
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-modal';
+    overlay.style.zIndex = "1000";
+    overlay.innerHTML = `
+        <div class="gacha-reveal-box">
+            <div id="gacha-egg">🥚</div>
+            <div id="gacha-msg">Đang ấp trứng...</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const egg = document.getElementById('gacha-egg');
+    const msg = document.getElementById('gacha-msg');
+
+    // Animation sequence
+    setTimeout(() => { egg.style.transform = 'rotate(-15deg)'; }, 500);
+    setTimeout(() => { egg.style.transform = 'rotate(15deg)'; }, 1000);
+    setTimeout(() => { egg.style.transform = 'rotate(-20deg) scale(1.1)'; }, 1500);
+    setTimeout(() => { 
+        egg.style.transform = 'scale(2)'; 
+        egg.style.opacity = '0';
+        msg.innerText = 'BÙM! ✨';
+    }, 2000);
+
+    setTimeout(() => {
+        const isNew = !RPG.state.ownedSpecies.includes(species);
+        if (isNew) {
+            RPG.state.ownedSpecies.push(species);
+            msg.innerHTML = `<div class="gacha-title">BẠN ĐÃ MỞ KHÓA:</div><div class="gacha-pet-name">${PET_SPECIES[species].label}</div>`;
+        } else {
+            // Refund/Compensation
+            const bonusXP = 500;
+            // Add XP to the specific pet in storage
+            let allPets = JSON.parse(localStorage.getItem('rpg_all_pets')) || {};
+            if (!allPets[species]) allPets[species] = { lv: 1, exp: 0 };
+            allPets[species].exp += bonusXP;
+            localStorage.setItem('rpg_all_pets', JSON.stringify(allPets));
+            
+            msg.innerHTML = `<div class="gacha-comp-title">BẠN ĐÃ CÓ ${PET_SPECIES[species].label}</div><div class="gacha-comp-val">+${bonusXP} XP ĐỀN BÙ!</div>`;
+            
+            // If current pet is the same, sync it
+            if (myPet.species === species) {
+                myPet.exp += bonusXP;
+            }
+        }
+        
+        RPG.save();
+        renderPet();
+        
+        const closeHint = document.createElement('div');
+        closeHint.innerText = '(Bấm để đóng)';
+        closeHint.style.marginTop = '20px';
+        overlay.appendChild(closeHint);
+        overlay.onclick = () => overlay.remove();
+    }, 2500);
+}
 
 // ===== CORE LOGIC =====
 function setPetState(state) {
@@ -197,24 +301,26 @@ function updateSpriteClass() {
     if (currentLottiePath === jsonPath && currentLottieAnim) return;
 
     if (jsonPath) {
+        if (currentLottieAnim) {
+            currentLottieAnim.destroy();
+            currentLottieAnim = null;
+        }
         currentLottiePath = jsonPath;
-        if (currentLottieAnim) currentLottieAnim.destroy();
         spriteEl.innerHTML = "";
         
         isAnimationPlaying = true;
         currentLottieAnim = window.lottie.loadAnimation({
             container: spriteEl,
             renderer: 'svg',
-            loop: (petInteractionState === 'random'), 
+            loop: false, // Để mình tự kiểm soát vòng lặp để đổi hoạt ảnh
             autoplay: true,
             path: jsonPath
         });
         currentLottieAnim.addEventListener('complete', () => { 
-            if (petInteractionState !== 'random') {
-                isAnimationPlaying = false; 
-                petInteractionState = 'random';
-                updateSpriteClass();
-            }
+            // Luôn chuyển sang hoạt ảnh mới ngay khi vừa xong một vòng lặp
+            isAnimationPlaying = false; 
+            petInteractionState = 'random';
+            updateSpriteClass();
         });
         currentLottieAnim.addEventListener('error', () => { isAnimationPlaying = false; });
     } else {
@@ -230,6 +336,13 @@ function renderPet() {
     while (myPet.exp >= getPetExpReq(myPet.lv)) {
         myPet.exp -= getPetExpReq(myPet.lv);
         myPet.lv++;
+        
+        // ĐỒNG BỘ LEVEL SANG RPG SYSTEM
+        if (typeof window.RPG !== 'undefined') {
+            window.RPG.state.level = myPet.lv;
+            window.RPG.save(); // Phát tín hiệu cho các widget khác biết sếp đã lên cấp!
+        }
+        
         triggerEvoFx();
     }
     
@@ -242,7 +355,11 @@ function renderPet() {
 
     nameEl.innerText = stage.name;
     lvEl.innerText = myPet.lv;
-    coinDisplay.innerText = RPG.state.coins;
+    
+    // Đồng bộ Xu từ RPG System lên giao diện Pet
+    if (typeof window.RPG !== 'undefined') {
+        coinDisplay.innerText = window.RPG.state.coins;
+    }
     
     const needed = getPetExpReq(myPet.lv);
     expBar.style.width = Math.min(100, Math.floor(myPet.exp / needed * 100)) + '%';
@@ -255,7 +372,77 @@ function renderPet() {
 }
 
 function getPetExpReq(lv) { return 60 * lv; }
-function showSpeciesPicker() { speciesPicker.style.display = 'block'; petMain.style.display = 'none'; }
+function renderSpeciesPicker(isTargeted = false) {
+    speciesPicker.style.display = 'block';
+    petMain.style.display = 'none';
+
+    const container = document.querySelector('.species-grid');
+    container.innerHTML = '';
+
+    Object.keys(PET_SPECIES).forEach(key => {
+        const spec = PET_SPECIES[key];
+        const isOwned = RPG.state.ownedSpecies.includes(key);
+        
+        const btn = document.createElement('button');
+        btn.className = `species-btn ${isOwned ? 'owned' : 'locked'}`;
+        btn.dataset.species = key;
+        
+        const emojis = { cat: '🐱', dragon: '🐉', bunny: '🐰', mascot: '🐣', dog: '🐶', owl: '🦉' };
+        btn.innerHTML = `${emojis[key]}<br><small>${spec.label}</small>`;
+
+        btn.onclick = () => {
+            if (isTargeted && !isOwned) {
+                // Targeted buying logic
+                const cost = 400;
+                if (RPG.state.coins < cost) { showToast('❌ Không đủ 400 Xu!'); return; }
+                RPG.state.coins -= cost;
+                RPG.state.ownedSpecies.push(key);
+                RPG.save();
+                showToast(`✨ Đã mở khóa ${spec.label}!`);
+                renderSpeciesPicker(false);
+                return;
+            }
+
+            if (!isOwned) {
+                showToast('🔒 Bạn chưa sở hữu loài này. Hãy mua Trứng trong Shop!');
+                return;
+            }
+
+            switchPet(key);
+        };
+        container.appendChild(btn);
+    });
+}
+
+function switchPet(targetSpecies) {
+    // 1. Save old
+    if (myPet.species) {
+        let allPets = JSON.parse(localStorage.getItem('rpg_all_pets')) || {};
+        allPets[myPet.species] = { lv: myPet.lv, exp: myPet.exp };
+        localStorage.setItem('rpg_all_pets', JSON.stringify(allPets));
+    }
+
+    // 2. Load new
+    let allPets = JSON.parse(localStorage.getItem('rpg_all_pets')) || {};
+    let saved = allPets[targetSpecies];
+    
+    myPet.species = targetSpecies;
+    myPet.lv = saved ? saved.lv : 1;
+    myPet.exp = saved ? saved.exp : 0;
+    
+    // 3. UI
+    speciesPicker.style.display = 'none';
+    petMain.style.display = 'block';
+
+    if (currentLottieAnim) { currentLottieAnim.destroy(); currentLottieAnim = null; }
+    currentLottiePath = "";
+    
+    renderPet();
+}
+
+function showSpeciesPicker(isTargeted = false) { 
+    renderSpeciesPicker(isTargeted);
+}
 function showToast(msg) {
     const el = document.createElement('div');
     el.className = 'skill-toast'; el.innerText = msg; document.body.appendChild(el);
@@ -269,46 +456,30 @@ function createHeart() {
 }
 function triggerEvoFx() {
     const fx = document.createElement("div"); fx.className = "smoke-fx"; fx.innerText = "✨";
-    Object.assign(fx.style, { position: "absolute", fontSize: "100px", width: "100%", height: "100%", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100, animation: "puff 1s forwards" });
+    fx.classList.add('evo-fx-container');
     spriteEl.appendChild(fx); setTimeout(() => fx.remove(), 1000);
 }
 
 // ===== LISTENERS =====
-document.querySelectorAll('.species-btn').forEach(btn => {
-    btn.onclick = () => {
-        const targetSpecies = btn.dataset.species;
-        
-        // 1. Lưu tiến độ con cũ trước khi đổi
-        if (myPet.species) {
-            let allPets = JSON.parse(localStorage.getItem('rpg_all_pets')) || {};
-            allPets[myPet.species] = { lv: myPet.lv, exp: myPet.exp };
-            localStorage.setItem('rpg_all_pets', JSON.stringify(allPets));
-        }
-
-        // 2. Nạp tiến độ con mới (nếu có)
-        let allPets = JSON.parse(localStorage.getItem('rpg_all_pets')) || {};
-        let saved = allPets[targetSpecies];
-        
-        myPet.species = targetSpecies;
-        myPet.lv = saved ? saved.lv : 1;
-        myPet.exp = saved ? saved.exp : 0;
-        
-        // 3. Cập nhật UI
-        const sp = document.getElementById('species-picker');
-        const pm = document.getElementById('pet-main');
-        if(sp) sp.style.display = 'none';
-        if(pm) pm.style.display = 'block';
-
-        // Xóa sạch trạng thái cũ để bắt đầu trứng mới
-        if (currentLottieAnim) { currentLottieAnim.destroy(); currentLottieAnim = null; }
-        currentLottiePath = "";
-        
-        renderPet();
-        updateSpriteClass(); // Force hiện trứng ngay lập tức
-    };
-});
+// Replaced by renderSpeciesPicker dynamic rendering
 changeBtn.onclick = () => showSpeciesPicker();
 spriteEl.onclick = () => { if(!isAnimationPlaying) { setPetState('happy'); createHeart(); } };
+
+// Mở shop và chuẩn bị thuốc test
+const originalShopBtn = document.getElementById('shop-btn');
+if (originalShopBtn) {
+    originalShopBtn.onclick = () => {
+        document.getElementById('shop-modal').style.display = 'flex';
+        injectTestPotion();
+    };
+}
+
+window.hardResetPet = () => {
+    if (confirm("⚠️ CẢNH BÁO: Hành động này sẽ xóa sạch toàn bộ dữ liệu Pet, Xu và Level của Boss để bắt đầu Audit lại từ đầu. Sếp có chắc chắn không?")) {
+        localStorage.clear();
+        window.location.reload();
+    }
+};
 
 setInterval(() => {
     // If it's random mode, we change animation based on a timer

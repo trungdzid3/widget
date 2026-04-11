@@ -107,11 +107,22 @@ function renderMonthGrid(events, container) {
     
     const monthSpan = document.createElement('span');
     monthSpan.textContent = 'Tháng ' + (month + 1);
-    monthSpan.onclick = () => openPicker('month');
+    const owlTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('owl') : 0;
+    if (owlTier >= 1) {
+        monthSpan.onclick = () => openPicker('month');
+    } else {
+        monthSpan.className = 'locked';
+        monthSpan.title = 'Yêu cầu Cú Mèo Tier 1 để đổi tháng';
+    }
     
     const yearSpan = document.createElement('span');
     yearSpan.textContent = ' - ' + year;
-    yearSpan.onclick = () => openPicker('year');
+    if (owlTier >= 2) {
+        yearSpan.onclick = () => openPicker('year');
+    } else {
+        yearSpan.className = 'locked';
+        yearSpan.title = 'Yêu cầu Cú Mèo Tier 2 để đổi năm';
+    }
 
     monthTitle.appendChild(monthSpan);
     monthTitle.appendChild(yearSpan);
@@ -152,7 +163,7 @@ function renderMonthGrid(events, container) {
 
         if (dayEvents.length > 0) {
             dayCell.classList.add('has-events');
-            
+
             // Generate list of items
             const nowTime = new Date().getTime();
             const evtTexts = dayEvents.map(e => {
@@ -201,6 +212,7 @@ function renderMonthGrid(events, container) {
             dayCell.addEventListener('mouseleave', hideGlobalTooltip);
         }
 
+        // Đã gỡ bỏ logic thông báo cũ tại đây để tối ưu hóa.
         if (d === now.getDate() && month === now.getMonth() && year === now.getFullYear()) {
             dayCell.classList.add('is-today');
         }
@@ -210,6 +222,57 @@ function renderMonthGrid(events, container) {
 
     container.appendChild(grid);
 }
+
+// ĐẶC QUYỀN CÚ MÈO - v2.0: Tặng quà hàng ngày (Tier 2+)
+function checkOwlDailyBonus() {
+    const owlTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('owl') : 0;
+    if (owlTier < 2) return;
+
+    const today = new Date().toDateString();
+    const lastClaim = localStorage.getItem('owl_last_claim');
+
+    if (lastClaim !== today) {
+        if (window.RPG && window.RPG.addReward) {
+            window.RPG.addReward('DAILY_BONUS');
+            localStorage.setItem('owl_last_claim', today);
+            
+            // Thông báo nhanh cho boss
+            const msg = document.createElement('div');
+            msg.className = 'owl-daily-msg';
+            msg.innerHTML = '🦉 <b>Cú Mèo:</b> Boss ơi, em tặng Boss 50 xu quà hàng ngày nè! ✨';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 5000);
+        }
+    }
+}
+
+
+// ĐẶC QUYỀN CÚ MÈO - TIER 3: Windows Notification 15 phút trước
+function scheduleOwlNotifications(dayEvents) {
+    if (!window.widgetMeta || !window.widgetMeta.owlScheduleReminders) return;
+
+    const now = Date.now();
+    const reminders = [];
+
+    dayEvents.forEach(evt => {
+        const startStr = evt.start.dateTime || evt.start.date;
+        const startTime = new Date(startStr).getTime();
+        const notifyAt = startTime - (15 * 60 * 1000); // Mốc thời gian chính xác (15p trước)
+
+        if (notifyAt > now) {
+            reminders.push({
+                title: evt.summary || 'Sự kiện',
+                time: new Date(startStr).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+                notifyAt: notifyAt // Gửi mốc thời gian tuyệt đối
+            });
+        }
+    });
+
+    if (reminders.length > 0) {
+        window.widgetMeta.owlScheduleReminders(reminders);
+    }
+}
+
 
 function hideGlobalTooltip() {
     const gt = document.getElementById('global-tooltip');
@@ -379,24 +442,84 @@ viewBtns.forEach(btn => {
 });
 
 
+async function syncOwlReminders() {
+    const owlTier3 = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('owl') : 0;
+    if (owlTier3 !== 3) return;
+
+    try {
+        const today = new Date();
+        const startOfDay = new Date(today.setHours(0,0,0,0)).toISOString();
+        
+        // Lấy sự kiện của đúng ngày hôm nay để Cú Mèo canh chừng
+        const events = await window.widgetMeta.getCalendarEvents('day', startOfDay);
+        if (events && events.length > 0) {
+            const now = Date.now();
+            const reminders = [];
+            
+            events.forEach(evt => {
+                const startStr = evt.start.dateTime || evt.start.date;
+                const startTime = new Date(startStr).getTime();
+                const title = evt.summary || 'Sự kiện';
+                const timeStr = new Date(startStr).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                const eventId = evt.id || (title + startTime); // Fallback ID
+
+                // Mốc 1: 15 phút trước
+                const t15 = startTime - (15 * 60 * 1000);
+                if (t15 > now - 60000) {
+                    reminders.push({ id: eventId, title, time: timeStr, notifyAt: t15, type: '15p' });
+                }
+                
+                // Mốc 2: 5 phút trước (Lưới an toàn)
+                const t5 = startTime - (5 * 60 * 1000);
+                if (t5 > now - 60000) {
+                    reminders.push({ id: eventId, title, time: timeStr, notifyAt: t5, type: '5p' });
+                }
+            });
+
+            if (reminders.length > 0) {
+                console.log(`[Owl] 🦉 Tier 3: Đã đồng bộ ${reminders.length} mốc thông báo (15p & 5p) cho hôm nay.`);
+                window.widgetMeta.owlScheduleReminders(reminders);
+            }
+        }
+    } catch (e) {
+        console.error('[Owl] Lỗi đồng bộ thông báo:', e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    checkOwlDailyBonus(); // Kiểm tra quà hàng ngày
     loadCalendarEvents();
+    syncOwlReminders(); // Đồng bộ riêng cho Cú Mèo
     setInterval(loadCalendarEvents, 30 * 60 * 1000);
+    setInterval(syncOwlReminders, 15 * 60 * 1000); // 15p đồng bộ Cú 1 lần
 });
 
 // Keyboard navigation
 window.addEventListener('keydown', (e) => {
+    // Hỗ trợ ESC để đóng modal
+    if (e.key === 'Escape') {
+        const pModal = document.getElementById('picker-modal');
+        const sModal = document.getElementById('settings-modal');
+        if (pModal) pModal.style.display = 'none';
+        if (sModal) sModal.style.display = 'none';
+        return;
+    }
+
     if (currentView !== 'month') return;
     
-    // Ignore if modal is open
+    // Bỏ qua nếu modal đang mở (để phím mũi tên không đổi tháng khi đang chọn tháng/năm)
     if (document.getElementById('picker-modal').style.display === 'flex') return;
     if (document.getElementById('settings-modal').style.display === 'flex') return;
 
+    const owlTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('owl') : 0;
+
     if (e.key === 'ArrowLeft') {
+        if (owlTier < 1) return; // Lock Month Switching
         displayDate.setMonth(displayDate.getMonth() - 1);
         hideGlobalTooltip();
         loadCalendarEvents(true);
     } else if (e.key === 'ArrowRight') {
+        if (owlTier < 1) return; // Lock Month Switching
         displayDate.setMonth(displayDate.getMonth() + 1);
         hideGlobalTooltip();
         loadCalendarEvents(true);

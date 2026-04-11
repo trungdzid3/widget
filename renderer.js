@@ -681,9 +681,28 @@ function applyWeatherData(data) {
         }
     }
 
+    const dragonTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('dragon') : 0;
+    // Mặc định Trứng (Tier 1) xem 1 ngày, Emoji (Tier 2) xem 2 ngày, Lottie (Tier 3) xem 3 ngày
+    const allowedDays = dragonTier >= 3 ? 3 : (dragonTier >= 2 ? 2 : 1);
+    
+    const viewForecast = $('view-forecast');
+    const fcHeader = viewForecast.querySelector('.fc-header');
+    if (fcHeader) {
+        const headerText = allowedDays === 1 ? 'Ngày Mai' : `${allowedDays} Ngày`;
+        fcHeader.innerText = `📅 Dự Báo ${headerText} — nhấn để đóng`;
+    }
+
     for (let i = 0; i < 3; i++) {
         const idx = i + 1;
         const card = $(`fc${i}`);
+        
+        // Ẩn/Hiện card dựa trên số ngày được phép xem
+        if (i < allowedDays) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+
         const date = new Date(daily.time[idx]);
         const day = i === 0 ? 'Ngày mai' : DAY_NAMES[date.getDay()];
         const hi = Math.round(daily.temperature_2m_max[idx]);
@@ -1109,21 +1128,24 @@ async function useGeolocation() {
 }
 
 function toggleForecast() {
-    const currentView = $('view-current');
-    const forecastView = $('view-forecast');
-    const isShowing = forecastView.classList.contains('show');
-
-    if (isShowing) {
-        forecastView.classList.remove('show');
-        forecastView.style.display = 'none';
-        currentView.style.display = '';
-        return;
+    const viewForecast = $('view-forecast');
+    if (viewForecast.classList.contains('show')) {
+        viewForecast.classList.remove('show');
+        $('view-current').style.display = 'flex';
+    } else {
+        viewForecast.classList.add('show');
+        $('view-current').style.display = 'none';
+        updateWeather();
     }
-
-    currentView.style.display = 'none';
-    forecastView.style.display = 'block';
-    requestAnimationFrame(() => forecastView.classList.add('show'));
 }
+
+// Lắng nghe đồng bộ từ hệ thống RPG
+window.addEventListener('rpg-update', () => {
+    if ($('view-forecast').classList.contains('show')) updateWeather();
+});
+window.addEventListener('rpg-sync-complete', () => {
+    if ($('view-forecast').classList.contains('show')) updateWeather();
+});
 
 let previousCityValue = $('city-select').value;
 

@@ -9,29 +9,131 @@ const RPG = {
         XP_MULTIPLIER: 1.5, // Exponential growth factor
         MAX_LEVEL: 50,
         REWARDS: {
-            TASK_COMPLETE: { xp: 25, coins: 5 },  // Note task
-            FOLDER_COMPLETE: { xp: 50, coins: 10 }, // HoÃ n thÃ nh táº¥t cáº£ thÆ° má»¥c
-            POMODORO_25:   { xp: 50, coins: 15 }, // Plant cycle (short)
-            POMODORO_50:   { xp: 120, coins: 40 }, // Plant cycle (long)
+            TASK_COMPLETE: { xp: 40, coins: 10 },  // Phương án B: Tăng gấp đôi
+            FOLDER_COMPLETE: { xp: 100, coins: 25 }, 
+            POMODORO_25:   { xp: 100, coins: 25 }, // Tăng thưởng cày cuốc
+            DAILY_BONUS:   { xp: 0,   coins: 50 }, // Quà hàng ngày từ Cú
         }
     },
-
-    // State Structure (default)
     state: {
         level: 1,
         currentXP: 0,
         neededXP: 100,
-        coins: 0,
-        inventory: [], // [{id: 'hat_wizard', name: 'Mũ Phù Thủy'}]
-        petMood: 100,  // 0-100 (affects interactions)
-        lastAward: 0   // Timestamp to prevent spam
+        coins: 10,
+        inventory: [],
+        lastAward: 0,
+        ownedSpecies: ['dog', 'bunny', 'dragon', 'owl', 'cat', 'plant']
+    },
+
+    // Kiểm tra sở hữu Pet (Dùng cho Đặc quyền)
+    hasPet(species) {
+        return this.state.ownedSpecies && this.state.ownedSpecies.includes(species);
+    },
+
+    // Lấy cấp độ tiến hóa (Tier) cao nhất của loài Pet đó (Vĩnh viễn nếu đã sở hữu)
+    getPetTier(species) {
+        let maxLv = 1;
+        
+        // 1. Kiểm tra Pet đang active
+        try {
+            const activePet = JSON.parse(localStorage.getItem('rpg_pet'));
+            if (activePet && activePet.species === species) maxLv = Math.max(maxLv, activePet.lv || 1);
+        } catch(e) {}
+        
+        // 2. Kiểm tra kho lưu trữ toàn bộ Pet để lấy Level cao nhất
+        try {
+            const allPets = JSON.parse(localStorage.getItem('rpg_all_pets') || '{}');
+            if (allPets[species]) maxLv = Math.max(maxLv, allPets[species].lv || 1);
+        } catch(e) {}
+
+        // Kiểm tra xem species có trong danh sách sở hữu không
+        const isOwned = (this.state.ownedSpecies && this.state.ownedSpecies.includes(species)) || 
+                        (allPets && allPets[species]);
+
+        if (!isOwned) return 0;
+
+        if (maxLv >= 25) return 3; 
+        if (maxLv >= 3) return 2;  
+        return 1; 
+    },
+
+    // Lấy cấp độ cao nhất của loài Pet đó (Dùng cho kích hoạt tính năng UI vĩnh viễn)
+    getOwnedPetTier(species) {
+        try {
+            const activePet = JSON.parse(localStorage.getItem('rpg_pet') || '{}');
+            if (activePet.species === species) {
+                const lv = activePet.lv || 1;
+                if (lv >= 25) return 3;
+                if (lv >= 3) return 2;
+                return 1;
+            }
+            const allPets = JSON.parse(localStorage.getItem('rpg_all_pets') || '[]');
+            const sameSpecies = allPets.filter(p => p.species === species);
+            if (sameSpecies.length === 0) return 0;
+            const maxLv = Math.max(...sameSpecies.map(p => p.lv || 1));
+            if (maxLv >= 25) return 3;
+            if (maxLv >= 3) return 2;
+            return 1;
+        } catch(e) { return 0; }
+    },
+
+    // Lấy Tier cao nhất trong toàn bộ bộ sưu tập (Không quan trọng loài nào)
+    getGlobalMaxTier() {
+        try {
+            const activePet = JSON.parse(localStorage.getItem('rpg_pet') || '{}');
+            let maxTier = 0;
+            const getT = (lv) => (lv >= 25 ? 3 : (lv >= 3 ? 2 : 1));
+            
+            if (activePet.lv) maxTier = getT(activePet.lv);
+            
+            const allPets = JSON.parse(localStorage.getItem('rpg_all_pets') || '[]');
+            allPets.forEach(p => {
+                const t = getT(p.lv || 1);
+                if (t > maxTier) maxTier = t;
+            });
+            return maxTier;
+        } catch(e) { return 1; }
     },
 
     // Initialize & Load
     init() {
+        // [BẢO VỆ DỮ LIỆU ĐAO KIẾM] - Đã vô hiệu hóa Reset tự động để tránh mất Pet
+        /*
+        if (!localStorage.getItem('audit_round_final_v1')) {
+            localStorage.clear();
+            // Xóa sạch dấu vết các loài đã sở hữu
+            localStorage.removeItem('rpg_all_pets');
+            localStorage.removeItem('rpg_pet');
+            localStorage.setItem('audit_round_final_v1', 'true');
+            window.location.reload();
+            return;
+        }
+        */
+
         if (this._initialized) { this.load(); return; }
         this._initialized = true;
         this.load();
+        
+        // CHẾ ĐỘ ĐẠI GIA: Nếu chạy npm run test thì cho 10 tỷ lẻ
+        if (typeof window !== 'undefined') {
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.on('pomo-sync', (e, state) => {
+                    if (state.isTestMode) {
+                        this.state.coins = 9999999999;
+                        if (this.onStateChange) this.onStateChange(this.state);
+                    }
+                });
+            } else if (window.widgetMeta && window.widgetMeta.onPomoSync) {
+                window.widgetMeta.onPomoSync((state) => {
+                    if (state.isTestMode) {
+                        this.state.coins = 9999999999;
+                        if (this.onStateChange) this.onStateChange(this.state);
+                    }
+                });
+            }
+        }
+
         window.addEventListener('storage', (e) => {
             if (e.key === 'rpg_player_v2') {
                 this.load();
@@ -40,12 +142,21 @@ const RPG = {
         });
 
         // Bổ trợ đồng bộ chéo bằng IPC Broadcast (Siêu Tốc)
-        if (typeof window !== 'undefined' && window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.on('rpg-state-sync', (e, newState) => {
-                this.state = newState;
-                if (this.onStateChange) this.onStateChange(this.state);
-            });
+        if (typeof window !== 'undefined') {
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.on('rpg-state-sync', (e, newState) => {
+                    this.state = newState;
+                    if (this.onStateChange) this.onStateChange(this.state);
+                    window.dispatchEvent(new CustomEvent('rpg-sync-complete', { detail: newState }));
+                });
+            } else if (window.widgetMeta && window.widgetMeta.onRPGStateSync) {
+                window.widgetMeta.onRPGStateSync((newState) => {
+                    this.state = newState;
+                    if (this.onStateChange) this.onStateChange(this.state);
+                    window.dispatchEvent(new CustomEvent('rpg-sync-complete', { detail: newState }));
+                });
+            }
         }
     },
 
@@ -84,8 +195,12 @@ const RPG = {
         if (this.onStateChange) this.onStateChange(this.state);
 
         // Kíp nổ phát sóng đồng bộ
-        if (typeof window !== 'undefined' && window.require) {
-            window.require('electron').ipcRenderer.send('rpg-state-update', this.state);
+        if (typeof window !== 'undefined') {
+            if (window.require) {
+                window.require('electron').ipcRenderer.send('rpg-state-update', this.state);
+            } else if (window.widgetMeta && window.widgetMeta.sendRPGUpdate) {
+                window.widgetMeta.sendRPGUpdate(this.state);
+            }
         }
         this.debouncedCloudSync();
     },
@@ -106,17 +221,31 @@ const RPG = {
     },
 
     // Core Logic: Add XP & Coins
-    addReward(sourceType) { // 'TASK_COMPLETE' | 'POMODORO_25' ...
+    addReward(sourceType, luckyBonus = 0) { // 'TASK_COMPLETE' | 'POMODORO_25' ...
         const reward = this.CONFIG.REWARDS[sourceType] || { xp: 10, coins: 1 };
         
-        // Anti-spam check (optional, but good for tasks)
+        // Anti-spam check
         const now = Date.now();
         if (now - this.state.lastAward < 500) return null; 
         this.state.lastAward = now;
 
-        // Apply
+        // Apply reward + Lucky Bonus
+        let finalCoins = reward.coins + luckyBonus;
+        
+        // KỸ NĂNG CÚN CƯNG (DOG): Nhặt Xu theo Tier (Vĩnh viễn nếu đã sở hữu)
+        const dogTier = this.getOwnedPetTier('dog');
+        if (dogTier === 1) finalCoins = Math.floor(finalCoins * 1.1); // Trứng: +10%
+        else if (dogTier === 2) finalCoins = Math.floor(finalCoins * 1.15); // Emoji: +15%
+        else if (dogTier === 3) finalCoins = Math.floor(finalCoins * 1.2); // Lottie: +20%
+ 
+        // KỸ NĂNG MASCOT (MASCOT): ĐẶC CHỦNG CÀY XU (Hệ số cực cao - Vĩnh viễn nếu đã sở hữu)
+        const mascotTier = this.getOwnedPetTier('mascot');
+        if (mascotTier === 1) finalCoins = Math.floor(finalCoins * 1.2); // +20%
+        else if (mascotTier === 2) finalCoins = Math.floor(finalCoins * 1.5); // +50%
+        else if (mascotTier === 3) finalCoins = Math.floor(finalCoins * 2.0); // +100% (Gấp đôi)
+
         this.state.currentXP += reward.xp;
-        this.state.coins += reward.coins;
+        this.state.coins += finalCoins;
         
         // Level Up Check
         let leveledUp = false;
@@ -132,8 +261,10 @@ const RPG = {
         return { 
             leveledUp, 
             gainedXP: reward.xp, 
-            gainedCoins: reward.coins,
-            newLevel: this.state.level 
+            gainedCoins: finalCoins,
+            newLevel: this.state.level,
+            isLucky: luckyBonus > 0,
+            hasDogBuff: this.hasPet('dog')
         };
     },
 
