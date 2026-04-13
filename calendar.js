@@ -429,6 +429,18 @@ viewBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
         const view = e.target.getAttribute('data-view');
         if(!view || view === 'year') return;
+
+        // KIỂM TRA ĐẶC QUYỀN CÚ MÈO
+        const owlTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('owl') : 0;
+        
+        if (view === 'week' && owlTier < 1) {
+            showToast('🦉 Yêu cầu sở hữu Cú Mèo (Tier 1) để mở khóa xem Tuần!');
+            return;
+        }
+        if (view === 'month' && owlTier < 2) {
+            showToast('🦉 Yêu cầu sở hữu Cú Mèo (Tier 2) để mở khóa xem Tháng!');
+            return;
+        }
         
         if (currentView !== view) {
             eventListEl.scrollTop = 0; // Reset scroll khi đổi tab
@@ -439,6 +451,28 @@ viewBtns.forEach(btn => {
         currentView = view;
         loadCalendarEvents();
     });
+});
+
+function updateViewLockStatus() {
+    const owlTier = (window.RPG && window.RPG.getPetTier) ? window.RPG.getPetTier('owl') : 0;
+    viewBtns.forEach(btn => {
+        const view = btn.getAttribute('data-view');
+        if (view === 'week' && owlTier < 1) {
+            btn.classList.add('perk-locked');
+            btn.title = 'Yêu cầu Cú Mèo Tier 1';
+        } else if (view === 'month' && owlTier < 2) {
+            btn.classList.add('perk-locked');
+            btn.title = 'Yêu cầu Cú Mèo Tier 2';
+        } else {
+            btn.classList.remove('perk-locked');
+        }
+    });
+}
+
+// Gọi cập nhật trạng thái khi load
+document.addEventListener('DOMContentLoaded', updateViewLockStatus);
+window.addEventListener('storage', (e) => {
+    if (e.key === 'rpg_all_pets' || e.key === 'rpg_player_v2') updateViewLockStatus();
 });
 
 

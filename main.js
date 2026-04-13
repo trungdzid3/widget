@@ -253,7 +253,12 @@ function toggleSmartVisibility(forceShow = null) {
                 wins[key].setIgnoreMouseEvents(mState.pinned[key] || false, { forward: true });
             } else {
                 wins[key].setOpacity(0);
-                try { wins[key].webContents.setFrameRate(1); wins[key].webContents.backgroundThrottling = true; } catch(e){}
+                // ĐẶC QUYỀN CHO MASCOT (PLANT): Không bao giờ throttle để tránh lỗi nhạc YouTube 153
+                if (key === 'plant') {
+                    try { wins[key].webContents.setFrameRate(60); wins[key].webContents.backgroundThrottling = false; } catch(e){}
+                } else {
+                    try { wins[key].webContents.setFrameRate(1); wins[key].webContents.backgroundThrottling = true; } catch(e){}
+                }
                 wins[key].setIgnoreMouseEvents(true);
             }
         }
@@ -478,7 +483,7 @@ function createWindows() {
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
 
     plantWin = createWidget('plant', 'plant.html', [252, 230, width - 350, 100], 
-        { nodeIntegration: true, contextIsolation: false });
+        { nodeIntegration: true, contextIsolation: false, autoplayPolicy: 'no-user-gesture-required' });
 
     petWin = createWidget('pet', 'pet.html', [246, 289, width - 600, 300], 
         { nodeIntegration: true, contextIsolation: false }, { resizable: false });
@@ -613,7 +618,12 @@ ipcMain.on('toggle-widget', (event, name, isVisible) => {
             wMap[name].setIgnoreMouseEvents(mState.pinned[name] || false, { forward: true });
         } else {
             wMap[name].setOpacity(0);
-            try { wMap[name].webContents.setFrameRate(1); wMap[name].webContents.backgroundThrottling = true; } catch(e){}
+            // ĐẶC QUYỀN CHO MASCOT (PLANT): Không bao giờ throttle để tránh lỗi nhạc YouTube 153
+            if (name === 'plant') {
+                try { wMap[name].webContents.setFrameRate(60); wMap[name].webContents.backgroundThrottling = false; } catch(e){}
+            } else {
+                try { wMap[name].webContents.setFrameRate(1); wMap[name].webContents.backgroundThrottling = true; } catch(e){}
+            }
             wMap[name].setIgnoreMouseEvents(true);
         }
     }
@@ -657,7 +667,6 @@ app.whenReady().then(() => {
 
     setTimeout(() => {
         googleService.authenticate().then(() => {
-            console.log("==> GOOGLE API HOÀN TẤT KẾT NỐI!");
             if (noteWin) noteWin.webContents.send('google-ready');
         }).catch(err => console.log("Hỏng Google Auth:", err));
     }, 2500);
@@ -672,6 +681,7 @@ app.whenReady().then(() => {
     ipcMain.handle('g-remove-task', async (e, id, listId) => await googleService.removeTask(id, listId));
     ipcMain.handle('g-backup-rpg', async (e, data) => await googleService.backupRPG(data));
     ipcMain.handle('g-restore-rpg', async () => await googleService.restoreRPG());
+    
     
     // --- PomoEngine listeners ---
     ipcMain.on('pomo-command', (e, cmd, data) => {
@@ -715,14 +725,6 @@ app.whenReady().then(() => {
         callback(prop === 'geolocation');
     });
 
-    session.defaultSession.webRequest.onBeforeSendHeaders(
-        { urls: ['*://*.youtube.com/*', '*://*.youtube-nocookie.com/*'] },
-        (details, callback) => {
-            details.requestHeaders['Origin'] = 'https://www.youtube.com';
-            details.requestHeaders['Referer'] = 'https://www.youtube.com/';
-            callback({ requestHeaders: details.requestHeaders });
-        }
-    );
 });
 
 app.on('before-quit', () => isQuiting = true);

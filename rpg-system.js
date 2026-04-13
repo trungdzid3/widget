@@ -67,33 +67,16 @@ const RPG = {
                 if (lv >= 3) return 2;
                 return 1;
             }
-            const allPets = JSON.parse(localStorage.getItem('rpg_all_pets') || '[]');
-            const sameSpecies = allPets.filter(p => p.species === species);
-            if (sameSpecies.length === 0) return 0;
-            const maxLv = Math.max(...sameSpecies.map(p => p.lv || 1));
-            if (maxLv >= 25) return 3;
-            if (maxLv >= 3) return 2;
+            const allPets = JSON.parse(localStorage.getItem('rpg_all_pets') || '{}');
+            const data = allPets[species];
+            if (!data) return 0;
+            const lv = data.lv || 1;
+            if (lv >= 25) return 3;
+            if (lv >= 3) return 2;
             return 1;
         } catch(e) { return 0; }
     },
 
-    // Lấy Tier cao nhất trong toàn bộ bộ sưu tập (Không quan trọng loài nào)
-    getGlobalMaxTier() {
-        try {
-            const activePet = JSON.parse(localStorage.getItem('rpg_pet') || '{}');
-            let maxTier = 0;
-            const getT = (lv) => (lv >= 25 ? 3 : (lv >= 3 ? 2 : 1));
-            
-            if (activePet.lv) maxTier = getT(activePet.lv);
-            
-            const allPets = JSON.parse(localStorage.getItem('rpg_all_pets') || '[]');
-            allPets.forEach(p => {
-                const t = getT(p.lv || 1);
-                if (t > maxTier) maxTier = t;
-            });
-            return maxTier;
-        } catch(e) { return 1; }
-    },
 
     // Initialize & Load
     init() {
@@ -243,6 +226,10 @@ const RPG = {
         if (mascotTier === 1) finalCoins = Math.floor(finalCoins * 1.2); // +20%
         else if (mascotTier === 2) finalCoins = Math.floor(finalCoins * 1.5); // +50%
         else if (mascotTier === 3) finalCoins = Math.floor(finalCoins * 2.0); // +100% (Gấp đôi)
+        
+        // KỸ NĂNG MÈO THẦN (CAT): Nhạc trưởng Đa tài (Vĩnh viễn nếu đã sở hữu)
+        const catTier = this.getOwnedPetTier('cat');
+        if (catTier === 3) finalCoins = Math.floor(finalCoins * 1.1); // Bậc thầy (Tier 3): +10% Thu nhập
 
         this.state.currentXP += reward.xp;
         this.state.coins += finalCoins;

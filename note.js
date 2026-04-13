@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadTaskLists();
             } finally {
                 btnConfirmFolder.disabled = false;
-                btnConfirmFolder.textContent = 'TẠO';
+                btnConfirmFolder.textContent = 'TẠO NHIỆM VỤ';
             }
         }
     });
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnDeleteFolder) {
         btnDeleteFolder.addEventListener('click', async () => {
             if (!currentListId) return;
-            if (confirm('Xóa sổ này trên Google Tasks? Tất cả ghi chú bên trong sẽ biến mất vĩnh viễn.')) {
+            if (confirm('Xóa danh sách nhiệm vụ này trên Google Tasks? Tất cả công việc bên trong sẽ biến mất vĩnh viễn.')) {
                 try {
                     btnDeleteFolder.disabled = true;
                     btnDeleteFolder.textContent = '...';
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 taskListDiv.appendChild(item);
             });
         } else {
-            taskListDiv.innerHTML = '<div style="text-align:center; padding:10px; opacity:0.7;">Chưa có việc gì!</div>';
+            taskListDiv.innerHTML = '<div style="text-align:center; padding:10px; opacity:0.7;">Chưa có nhiệm vụ nào!</div>';
         }
     }
 
@@ -437,11 +437,11 @@ async function toggleTaskStatus(task, listId, itemElement) {
             const doneTasks = document.querySelectorAll('.task-item.done');
             
             if (allTasks.length === 0) {
-                 alert("Sổ này chưa có task nào nha!");
+                 alert("Danh sách này chưa có nhiệm vụ nào nha!");
                  return;
             }
             if (doneTasks.length < allTasks.length) {
-                 alert("Phải hoàn thành 100% công việc mới được đóng dấu!");
+                 alert("Phải hoàn thành 100% nhiệm vụ mới được nộp nha!");
                  return;
             }
 
@@ -486,7 +486,7 @@ async function toggleTaskStatus(task, listId, itemElement) {
             }
 
             completeFolderBtn.disabled = true;
-            completeFolderBtn.textContent = "ĐÃ HOÀN THÀNH SỔ!";
+            completeFolderBtn.textContent = "ĐÃ HOÀN THÀNH NHIỆM VỤ!";
         });
     }
 

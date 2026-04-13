@@ -103,6 +103,22 @@ body {
     box-shadow: 0 3px 0 #bc8d53;
 }
 
+.view-btn.perk-locked {
+    filter: grayscale(1);
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+    pointer-events: none;
+}
+
+.view-btn.perk-locked::after {
+    content: '🔒';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    font-size: 10px;
+}
+
 .view-btn:hover { background-color: #d8ba98; transform: translateY(1px); box-shadow: 0 2px 0 #bc8d53; }
 .view-btn.active { background-color: #bc8d53; color: white; transform: translateY(3px); box-shadow: none; pointer-events: none; }
 

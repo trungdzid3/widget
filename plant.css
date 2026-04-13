@@ -162,3 +162,13 @@ button:active { transform: translate(3px, 3px); box-shadow: 0 0 0 #4caf50; }
 .modal-footer { margin-top: 5px; }
 
 .hidden { display: none !important; }
+.yt-hidden {
+    position: absolute;
+    top: -500px;
+    left: -500px;
+    width: 200px;
+    height: 200px;
+    opacity: 0.01; /* Vô cùng mờ nhưng không phải 0 để tránh trình duyệt hibernate IFrame */
+    pointer-events: none;
+    overflow: hidden;
+}

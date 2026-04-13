@@ -14,8 +14,6 @@ const musicBar = document.getElementById('music-bar');
 const nowPlaying = document.getElementById('now-playing');
 const musicPrev = document.getElementById('music-prev');
 const musicNext = document.getElementById('music-next');
-const musicShuffle = document.getElementById('music-shuffle');
-const musicListBtn = document.getElementById('music-list');
 const timeMinus = document.getElementById('time-minus');
 const timePlus = document.getElementById('time-plus');
 
@@ -45,205 +43,95 @@ const musicGenres = {
 
 let currentGenre = 'lofi';
 let currentTrackIdx = 0;
-let isShuffle = false;
-let isYouTubeMode = false;
-let ytPlayer = null;
+let musicAutoRotationTimer = null; // Quản lý xoay vòng bài hát tự động
 let isTestMode = false;
-let favoriteAlbums = JSON.parse(localStorage.getItem('yt_albums') || '[]');
 
 // ===== KHỞI TẠO TIẾN HÓA =====
 function checkPetPrivileges() {
-    // Chỉ cần sở hữu bất kỳ Pet nào đạt Tier, tính năng sẽ mở khóa vĩnh viễn
-    const globalTier = RPG.getGlobalMaxTier();
-    const mascotTier = RPG.getOwnedPetTier('mascot');
+    const catTier = RPG.getOwnedPetTier('cat');
 
-    // Mèo Thần: Nhạc (Giờ đây pet nào cũng dùng được)
-    if (globalTier >= 1 || isTestMode) {
-        musicBar.classList.remove('hidden');
-        musicNext.classList.remove('hidden');
-        musicPrev.classList.remove('hidden');
-    }
-    if (globalTier >= 2 || isTestMode) {
-        musicShuffle.classList.remove('hidden');
-    }
-    if (globalTier >= 3 || isTestMode) {
-        musicListBtn.classList.remove('hidden');
-    }
+    // Thanh nhạc: Luôn hiển thị theo ý Boss
+    musicBar.classList.remove('hidden');
 
-    // Mascot: Timer
-    // Đã chuyển sang dạng nhấn trực tiếp vào đồng hồ, không cần logic ẩn hiện box cũ
+    // Chỉ Mèo Tier 3 mới hiện nút chuyển bài thủ công
+    if (catTier >= 3 || isTestMode) {
+        musicNext && musicNext.classList.remove('hidden');
+        musicPrev && musicPrev.classList.remove('hidden');
+    } else {
+        musicNext && musicNext.classList.add('hidden');
+        musicPrev && musicPrev.classList.add('hidden');
+    }
 }
 
 // ===== LOGIC ÂM NHẠC =====
 function playCurrentTrack() {
-    if (!isRunning) return; // Chỉ phát khi đã bấm Bắt Đầu
-    if (isYouTubeMode) {
-        if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
-        return;
-    }
+    if (!isRunning) return; 
     
+    if (musicAutoRotationTimer) clearInterval(musicAutoRotationTimer);
+    
+    const catTier = RPG.getOwnedPetTier('cat');
     const tracks = musicGenres[currentGenre];
     const track = tracks[currentTrackIdx];
+    
+    const statusText = `Đang phát: ${track.name}`;
     nowPlaying.innerText = `Radio: ${track.name}`;
+    msgBox.innerText = statusText; 
+    
     audioPlayer.src = track.url;
     audioPlayer.play().catch(e => console.log("Audio block:", e));
+    
+    // CHỈ TIER 3 MỚI HỖ TRỢ XOAY VÒNG TỰ ĐỘNG
+    if (catTier >= 3 || isTestMode) {
+        musicAutoRotationTimer = setInterval(() => {
+            nextTrack();
+        }, 12 * 60 * 1000);
+    }
 }
 
 function nextTrack() {
+    const catTier = RPG.getOwnedPetTier('cat');
+    
+    // Tier 1: Chỉ được nghe Lofi
+    if (catTier < 2 && !isTestMode) currentGenre = 'lofi';
+    
     const tracks = musicGenres[currentGenre];
-    if (isShuffle) {
-        currentTrackIdx = Math.floor(Math.random() * tracks.length);
+    let newIdx;
+    
+    if (catTier === 1 && currentGenre === 'lofi' && !isTestMode) {
+        // Tier 1: Chỉ chọn 1 trong 2 bài đầu
+        newIdx = Math.floor(Math.random() * 2);
     } else {
-        currentTrackIdx = (currentTrackIdx + 1) % tracks.length;
+        // Tier 2+: Random toàn bộ trong thể loại
+        do {
+            newIdx = Math.floor(Math.random() * tracks.length);
+        } while (newIdx === currentTrackIdx && tracks.length > 1);
     }
+    
+    currentTrackIdx = newIdx;
     playCurrentTrack();
 }
 
 if (musicNext) musicNext.onclick = nextTrack;
 if (musicPrev) musicPrev.onclick = () => {
-    const tracks = musicGenres[currentGenre];
-    currentTrackIdx = (currentTrackIdx - 1 + tracks.length) % tracks.length;
-    playCurrentTrack();
-};
-if (musicShuffle) musicShuffle.onclick = () => {
-    isShuffle = !isShuffle;
-    musicShuffle.style.background = isShuffle ? '#4caf50' : '#81c784';
-    msgBox.innerText = isShuffle ? "Trộn bài: BẬT" : "Trộn bài: TẮT";
+    const catTier = RPG.getOwnedPetTier('cat');
+    if (catTier >= 3 || isTestMode) nextTrack(); 
 };
 
 if (nowPlaying) nowPlaying.onclick = () => {
+    const catTier = RPG.getOwnedPetTier('cat');
+    if (catTier < 2 && !isTestMode) {
+        msgBox.innerText = "Yêu cầu Mèo Thần Tier 2 để mở khóa thể loại mới! 🐱🎻";
+        return;
+    }
+
     const genres = Object.keys(musicGenres);
     const gIdx = (genres.indexOf(currentGenre) + 1) % genres.length;
     currentGenre = genres[gIdx];
     currentTrackIdx = 0;
-    msgBox.innerText = `Thể loại: ${currentGenre.toUpperCase()}`;
-    playCurrentTrack();
+    msgBox.innerText = `Thể loại: ${currentGenre.toUpperCase()} 🎧`;
+    nextTrack(); // Random luôn bài mới khi đổi thể loại
 };
 
-// ===== YOUTUBE IFRAME API (TIER 3) =====
-function loadYouTubeAPI() {
-    if (window.YT) return;
-    const tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-}
-
-window.onYouTubeIframeAPIReady = () => {
-    ytPlayer = new YT.Player('yt-player-container', {
-        height: '1', width: '1',
-        playerVars: { 'autoplay': 0, 'controls': 0, 'disablekb': 1, 'origin': window.location.origin },
-        events: {
-            'onReady': () => console.log("YT Player Ready"),
-            'onStateChange': onPlayerStateChange
-        }
-    });
-};
-
-function onPlayerStateChange(event) {
-    if (event.data === YT.PlayerState.PLAYING) {
-        const data = ytPlayer.getVideoData();
-        nowPlaying.innerText = `YT: ${data.title}`;
-    }
-    if (event.data === YT.PlayerState.ENDED && isShuffle) {
-        const count = ytPlayer.getPlaylist()?.length || 0;
-        if (count > 0) {
-            const nextIdx = Math.floor(Math.random() * count);
-            ytPlayer.playVideoAt(nextIdx);
-        }
-    }
-}
-
-// ===== POP-UP QUẢN LÝ ALBUM =====
-const musicModal = document.getElementById('music-modal');
-const albumListEl = document.getElementById('album-list');
-const ytInput = document.getElementById('yt-link-input');
-const addAlbumBtn = document.getElementById('btn-add-album');
-
-if (musicListBtn) musicListBtn.onclick = () => {
-    musicModal.classList.remove('hidden');
-    renderAlbumList();
-};
-const closeMusicBtn = document.getElementById('btn-close-music');
-if (closeMusicBtn) closeMusicBtn.onclick = () => musicModal.classList.add('hidden');
-
-if (addAlbumBtn) addAlbumBtn.onclick = async () => {
-    const url = ytInput.value.trim();
-    if (!url) return;
-    
-    let listId = "";
-    if (url.includes('list=')) {
-        listId = new URLSearchParams(new URL(url).search).get('list');
-    }
-    
-    if (listId) {
-        let title = "Album Mới";
-        try {
-            const resp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/playlist?list=${listId}&format=json`);
-            const data = await resp.json();
-            title = data.title;
-        } catch(e) {}
-        
-        favoriteAlbums.push({ id: listId, title: title });
-        localStorage.setItem('yt_albums', JSON.stringify(favoriteAlbums));
-        ytInput.value = "";
-        renderAlbumList();
-    } else {
-        alert("Boss ơi, link này không phải Playlist YouTube Music rồi!");
-    }
-};
-
-function renderAlbumList() {
-    if (!albumListEl) return;
-    albumListEl.innerHTML = '';
-    favoriteAlbums.forEach((alb, idx) => {
-        const div = document.createElement('div');
-        div.className = 'album-item';
-        div.title = "Click để phát Album này";
-        div.innerHTML = `
-            <span>💿 ${alb.title}</span>
-            <div class="album-actions" style="display:flex; gap:12px; align-items:center;">
-                <svg width="20" height="20" viewBox="0 -960 960 960" fill="#6750A4"><path d="M320-200v-560l440 280-440 280Z"/></svg>
-                <div class="del-btn" onclick="deleteAlbum(${idx}, event)">
-                    <svg width="20" height="20" viewBox="0 -960 960 960" fill="#B3261E"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>
-                </div>
-            </div>
-        `;
-        div.onclick = () => loadAlbum(alb.id);
-        albumListEl.appendChild(div);
-    });
-}
-
-window.deleteAlbum = (idx, e) => {
-    e.stopPropagation();
-    favoriteAlbums.splice(idx, 1);
-    localStorage.setItem('yt_albums', JSON.stringify(favoriteAlbums));
-    renderAlbumList();
-};
-
-function loadAlbum(listId) {
-    if (!listId) return;
-    isYouTubeMode = true;
-    audioPlayer.pause();
-    
-    msgBox.innerText = "Đã lưu Album YouTube Music!";
-    
-    if (ytPlayer && typeof ytPlayer.loadPlaylist === 'function') {
-        ytPlayer.loadPlaylist({
-            listType: 'playlist',
-            list: listId,
-            index: 0,
-            startSeconds: 0
-        });
-        musicModal.classList.add('hidden');
-        if (isShuffle) ytPlayer.setShuffle(true);
-        // Chỉ tự động phát nếu Timer đang chạy
-        if (isRunning) ytPlayer.playVideo(); 
-    } else {
-        loadYouTubeAPI();
-        setTimeout(() => loadAlbum(listId), 1000);
-    }
-}
 
 // ===== LOGIC MASCOT POMODORO =====
 const taskData = {
@@ -297,8 +185,13 @@ ipcRenderer.on('pomo-sync', (e, state) => {
     timeLeft = state.timeLeft;
     isRunning = state.isRunning;
     isBreakMode = state.isBreak;
+    isTestMode = state.isTestMode || false;
+    
     currentTask = state.type;
     isTestMode = state.isTestMode || false;
+    
+    // ĐỒNG BỘ GUI: Đảm bảo thanh chọn task khớp với trạng thái hệ thống
+    if (taskSelector && state.type) taskSelector.value = state.type;
     
     checkPetPrivileges();
 
@@ -351,7 +244,7 @@ function updateDisplayForBreak() {
 function finishCycleLocally() {
     stageDisplay.classList.remove('breath');
     audioPlayer.pause();
-    if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+    if (musicAutoRotationTimer) clearInterval(musicAutoRotationTimer);
     taskSelector.disabled = false;
 
     if (!isBreakMode) {
@@ -366,25 +259,27 @@ function finishCycleLocally() {
 playBtn.addEventListener('click', () => {
     if (!isRunning) {
         POMO_TIME = timeLeft; 
+        isRunning = true; // ÉP TRẠNG THÁI CHẠY NGAY LẬP TỨC ĐỂ NHẠC PHÁT KHÔNG TRỄ
         ipcRenderer.send('pomo-command', 'start', { time: timeLeft, isBreak: isBreakMode, type: currentTask });
-        playCurrentTrack();
+        // TỰ ĐỘNG RANDOM BÀI ĐẦU TIÊN
+        nextTrack(); 
     } else {
         ipcRenderer.send('pomo-command', 'pause');
         audioPlayer.pause();
-        if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+        if (musicAutoRotationTimer) clearInterval(musicAutoRotationTimer);
     }
 });
 
 resetBtn.addEventListener('click', () => {
     ipcRenderer.send('pomo-command', 'reset', { time: taskData[currentTask].time });
     audioPlayer.pause();
-    if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+    if (musicAutoRotationTimer) clearInterval(musicAutoRotationTimer);
 });
 
 ipcRenderer.on('weather-impact', (e, data) => {
     if (data.fx.includes('rain')) currentGenre = 'nature';
     else currentGenre = 'lofi';
-    if (!isYouTubeMode && isRunning) playCurrentTrack();
+    if (isRunning) playCurrentTrack();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -413,10 +308,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     inlineInput.onblur = saveInlineTime;
     inlineInput.onkeydown = (e) => { if (e.key === 'Enter') saveInlineTime(); };
+    
+    // KHỞI TẠO ĐỒNG BỘ: Đảm bảo Mascot hiện đúng cây theo thanh chọn ngay từ đầu
+    if (taskSelector) {
+        currentTask = taskSelector.value;
+        timeLeft = taskData[currentTask].time;
+    }
 
     RPG.init();
     checkPetPrivileges();
-    // loadYouTubeAPI(); // Vô hiệu hóa tạm thời theo yêu cầu của Boss
     updateDisplay();
 });
 

@@ -752,6 +752,11 @@ function getCustomAnchorOption() {
     return $('city-select').querySelector('option[value="custom"]');
 }
 
+function truncateText(text, maxLen = 35) {
+    if (!text || text.length <= maxLen) return text;
+    return text.substring(0, maxLen - 3) + '...';
+}
+
 function getCityOptionByValue(value) {
     return Array.from($('city-select').options).find(opt => opt.value === value) || null;
 }
@@ -768,7 +773,8 @@ function upsertCityOption(item, options = {}) {
     }
 
     opt.value = value;
-    opt.textContent = item.label;
+    // Thu gọn nhãn để tránh tràn dropdown menu gây xấu giao diện
+    opt.textContent = truncateText(item.label, 35);
 
     if (item.deletable) {
         opt.dataset.deletable = '1';
