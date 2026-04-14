@@ -70,11 +70,14 @@ try {
 let sidebarOpenTime = 0;
 ipcRenderer.on('play-open', () => sidebarOpenTime = Date.now());
 document.addEventListener('mousedown', (e) => {
-    if (Date.now() - sidebarOpenTime < 1000) return;
+    if (Date.now() - sidebarOpenTime < 600) return;
 
-    // 1. Cảm biến Mù Trọng lực: Khắc phục lỗi Kính tàng hình (Buffer 20px Height thừa của Main OS)
-    // Nếu Click vượt khỏi ranh giới vách tường hồng của hộp Dashboard -> Kích hoạt lệnh Gập Bảng ngay lập tức!
-    if (!e.target.closest('.dashboard')) {
+    // 1. NGĂN CHẶN TỰ ĐÓNG KHI THAO TÁC TRÊN BẢNG ĐIỀU KHIỂN
+    // Nếu click vào bất kỳ đâu TRONG .dashboard hoặc nút Đóng -> KHÔNG đóng
+    if (e.target.closest('.dashboard') || e.target.id === 'close-btn') {
+        // Cần cho phép Code thủ công tiếp tục chạy xuống dưới để xử lý Drag
+    } else {
+        // 2. Click ra ngoài vùng không gian (Desktop/Hình nền) -> Gập bảng
         ipcRenderer.send('close-sidebar');
         return;
     }

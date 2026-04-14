@@ -8,14 +8,14 @@ app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 app.commandLine.appendSwitch('disable-http-cache');
 app.commandLine.appendSwitch('enable-features', 'WinrtGeolocationImplementation');
 app.commandLine.appendSwitch('disable-site-isolation-trials');
-app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService,AudioServiceOutOfProcess');
+app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,MediaSessionService,AudioServiceOutOfProcess,SpareRenderer');
 app.commandLine.appendSwitch('disable-dev-shm-usage');
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('enable-gpu-rasterization'); 
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('disable-software-rasterizer'); 
 app.commandLine.appendSwitch('enable-hardware-overlays');
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
+app.commandLine.appendSwitch('js-flags', '--lite-mode --max-old-space-size=96 --expose-gc');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 app.commandLine.appendSwitch('disable-calculate-native-win-occlusion'); 
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
@@ -260,6 +260,8 @@ function toggleSmartVisibility(forceShow = null) {
 }
 
 // --- SIDEBAR LOGIC ---
+let isWidgetChanging = false; // Cờ ngăn Sidebar đóng khi đang tương tác bật/tắt widget
+
 function openSidebar() {
     if (launcherWin.isMinimized()) launcherWin.restore();
     launcherWin.setOpacity(1); 
@@ -277,6 +279,12 @@ function closeSidebar() {
         if (launcherWin.isDestroyed()) return;
         launcherWin.setOpacity(0);
         launcherWin.hide(); 
+        if (launcherWin.webContents) {
+            launcherWin.webContents.executeJavaScript('if(window.gc) window.gc();');
+            // Xóa bộ nhớ đệm và DNS cache để giải phóng RAM tối đa khi ẩn
+            launcherWin.webContents.session.clearCodeCaches({}).catch(() => {});
+            launcherWin.webContents.session.clearHostResolverCache().catch(() => {});
+        }
         if (handleWin && !handleWin.isDestroyed()) {
             handleWin.setOpacity(1);
             handleWin.showInactive();
@@ -284,6 +292,18 @@ function closeSidebar() {
         }
     }, 300);
 }
+
+// --- SYSTEM JANITOR (QUẢN GIA DỌN DẸP) ---
+function runSystemGC() {
+    BrowserWindow.getAllWindows().forEach(w => {
+        if (!w.isDestroyed() && w.webContents) {
+            w.webContents.executeJavaScript('if(window.gc) window.gc();').catch(() => {});
+            // Purge memory internal of Chromium
+            w.webContents.session.clearHostResolverCache().catch(() => {});
+        }
+    });
+}
+setInterval(runSystemGC, 5 * 60 * 1000); // 5 phút dọn rác 1 lần
 
 // --- BOOTSTRAP ---
 function createWindows() {
@@ -310,7 +330,12 @@ function createWindows() {
     });
     launcherWin.loadFile('launcher.html');
     launcherWin.setIgnoreMouseEvents(true);
-    launcherWin.on('blur', () => { setTimeout(() => { if(!launcherWin.isFocused()) closeSidebar(); }, 200); });
+    launcherWin.on('blur', () => { 
+        setTimeout(() => { 
+            // Chỉ đóng nếu không phải đang trong quá trình bật/tắt widget và Sidebar thực sự mất focus
+            if(!isWidgetChanging && !launcherWin.isFocused()) closeSidebar(); 
+        }, 300); 
+    });
 
     ipcMain.on('handle-drag-start', () => {
         const cursor = screen.getCursorScreenPoint(), [winX, winY] = handleWin.getPosition();
@@ -361,6 +386,9 @@ app.on('ready', () => {
 ipcMain.on('open-sidebar', openSidebar);
 ipcMain.on('close-sidebar', closeSidebar);
 ipcMain.on('toggle-widget', (e, name, isVisible) => {
+    isWidgetChanging = true; 
+    setTimeout(() => { isWidgetChanging = false; }, 1000); // Khóa 1s để tránh Sidebar đóng nhầm khi hiện widget mới
+
     mState.active[name] = isVisible;
     saveState(mState);
     if (isVisible) {
@@ -375,6 +403,9 @@ ipcMain.on('toggle-widget', (e, name, isVisible) => {
 });
 
 ipcMain.on('pin-widget', (e, name, isPinned) => {
+    isWidgetChanging = true;
+    setTimeout(() => { isWidgetChanging = false; }, 800);
+    
     mState.pinned[name] = isPinned;
     saveState(mState);
     if (windowMap[name] && !windowMap[name].isDestroyed()) windowMap[name].setIgnoreMouseEvents(isPinned, { forward: true });
