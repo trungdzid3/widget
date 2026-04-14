@@ -145,31 +145,50 @@ const RPG = {
 
     load() {
         try {
-            const saved = localStorage.getItem('rpg_player_v2');
-            if (saved) {
-                this.state = { ...this.state, ...JSON.parse(saved) };
-            } else {
-                this.save(); // Save defaults if new
-            }
-            // Thử kéo Cloud Save xuống nếu Local trống (Lần đầu mở trên máy mới)
-            if (!saved && typeof window !== 'undefined' && window.require) {
-                window.require('electron').ipcRenderer.invoke('g-restore-rpg').then(cloudDataJson => {
-                    if (cloudDataJson) {
-                        try {
-                            const cloud = JSON.parse(cloudDataJson);
-                            if (cloud.rpg) {
-                                this.state = cloud.rpg;
-                                localStorage.setItem('rpg_player_v2', JSON.stringify(cloud.rpg));
-                                if (cloud.pet) localStorage.setItem('rpg_pet', JSON.stringify(cloud.pet));
-                                this.save();
-                                console.log('Đã nạp thành công Cloud Save về máy mới!');
-                                setTimeout(() => window.location.reload(), 1000);
-                            }
-                        } catch(e) { console.error('Cloud restore parsing error:', e); }
+            // 1. Ưu tiên lấy từ Main Process (Source of Truth mới)
+            if (typeof window !== 'undefined' && window.require) {
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.invoke('get-rpg-state').then(mainState => {
+                    if (mainState) {
+                        this.state = { ...this.state, ...mainState };
+                        localStorage.setItem('rpg_player_v2', JSON.stringify(this.state));
+                        if (this.onStateChange) this.onStateChange(this.state);
+                    } else {
+                        // Nếu Main chưa có (lần đầu chạy), dùng localStorage cũ
+                        this._loadFromLocal();
                     }
-                }).catch(e => console.error('g-restore-rpg API failure:', e));
+                }).catch(() => this._loadFromLocal());
+            } else {
+                this._loadFromLocal();
             }
         } catch (e) { console.error("RPG Load Error:", e); }
+    },
+
+    _loadFromLocal() {
+        const saved = localStorage.getItem('rpg_player_v2');
+        if (saved) {
+            this.state = { ...this.state, ...JSON.parse(saved) };
+        } else {
+            this.save(); // Save defaults if new
+        }
+        // Thử kéo Cloud Save xuống nếu Local trống (Lần đầu mở trên máy mới)
+        if (!saved && typeof window !== 'undefined' && window.require) {
+            window.require('electron').ipcRenderer.invoke('g-restore-rpg').then(cloudDataJson => {
+                if (cloudDataJson) {
+                    try {
+                        const cloud = JSON.parse(cloudDataJson);
+                        if (cloud.rpg) {
+                            this.state = cloud.rpg;
+                            localStorage.setItem('rpg_player_v2', JSON.stringify(cloud.rpg));
+                            if (cloud.pet) localStorage.setItem('rpg_pet', JSON.stringify(cloud.pet));
+                            this.save();
+                            console.log('Đã nạp thành công Cloud Save về máy mới!');
+                            setTimeout(() => window.location.reload(), 1000);
+                        }
+                    } catch(e) { console.error('Cloud restore parsing error:', e); }
+                }
+            }).catch(e => console.error('g-restore-rpg API failure:', e));
+        }
     },
 
     save() {

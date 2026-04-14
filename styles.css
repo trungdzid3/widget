@@ -391,6 +391,14 @@ html, body {
     border-radius: 0 0 10px 10px;
 }
 
+.app-slogan {
+    font-size: 14px;
+    color: var(--text);
+    margin: 4px 0 -2px 0;
+    font-style: italic;
+    opacity: 0.8;
+}
+
 .meta-status {
     margin-top: 4px;
     min-height: 16px;
