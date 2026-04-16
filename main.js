@@ -449,6 +449,7 @@ ipcMain.on('pomo-command', (e, cmd, data) => {
         pomoState.isRunning = false; if (pomoTimer) clearInterval(pomoTimer);
         pomoState.timeLeft = isTestMode ? 5 : (data && data.time ? data.time : 1500);
         pomoState.isBreak = false;
+        if (data && data.type) pomoState.type = data.type;
     }
     broadcastPomo();
 });

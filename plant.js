@@ -135,10 +135,10 @@ if (nowPlaying) nowPlaying.onclick = () => {
 
 // ===== LOGIC MASCOT POMODORO =====
 const taskData = {
-    egg: { time: 15 * 60, emojis: ['🥚', '🐣', '🐥', '🐔', '🐉', '🐲'], name: 'Hỏa Rồng' },
-    plant: { time: 25 * 60, emojis: ['🌱', '🌿', '🪴', '🌳', '🌹', '🌺'], name: 'Hoa Lofi' },
-    house: { time: 45 * 60, emojis: ['🧱', '🪵', '🏗️', '🏠', '🏰', '🏯'], name: 'Lâu Đài Vàng' },
-    potion: { time: 60 * 60, emojis: ['💧', '🧪', '🥘', '🔮', '🧪', '🧙‍♂️'], name: 'Tiên Đan' }
+    egg: { time: 15 * 60, emojis: ['🥚', '🐣', '🔥', '🦕', '🐉', '🐲'], name: 'Hỏa Rồng' },
+    plant: { time: 25 * 60, emojis: ['🌱', '🌿', '🪴', '🌳', '🌻', '🌸'], name: 'Hoa Lofi' },
+    house: { time: 45 * 60, emojis: ['🧱', '🏗️', '🏠', '🏡', '🏰', '🏯'], name: 'Lâu Đài Vàng' },
+    potion: { time: 60 * 60, emojis: ['💧', '🧪', '🔮', '🏺', '✨', '🧙‍♂️'], name: 'Tiên Đan' }
 };
 
 let timeLeft = 1500;
