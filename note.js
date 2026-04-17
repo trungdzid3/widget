@@ -575,13 +575,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const stateNumbers = { 'break': 1, 'idle': 2, 'work': 3 };
 
-    function updateMascotSync() {
-        const status = localStorage.getItem('pomo_status') || 'idle';
+    function updateMascotSync(status) {
+        if (!status) status = localStorage.getItem('pomo_status') || 'idle';
         rabbit.src = animGifs[status] || animGifs['idle'];
         showRandomQuote(stateNumbers[status] || 2);
     }
 
-    // Observe changes from other windows
+    // Direct IPC Synchronization - Much more robust than localStorage
+    ipcRenderer.on('pomo-sync', (e, state) => {
+        let status = 'idle';
+        if (state.isRunning) {
+            status = state.isBreak ? 'break' : 'work';
+        }
+        updateMascotSync(status);
+        // Persist for initial page loads
+        localStorage.setItem('pomo_status', status);
+    });
+
+    // Observe changes from other sources if any
     window.addEventListener('storage', (e) => {
         if (e.key === 'pomo_status') updateMascotSync();
     });

@@ -11,7 +11,9 @@ const SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly'
 ];
 
+const SCOPES_VERSION = 'v1.7.4-all-access'; // Đánh dấu phiên bản quyền
 const TOKEN_PATH = path.join(os.homedir(), '.lofi-tasks-token.json');
+const VERSION_PATH = path.join(os.homedir(), '.lofi-tasks-scope-version.json');
 const SECRETS_PATH = path.join(__dirname, 'config-private.json');
 
 let oauth2Client;
@@ -54,9 +56,18 @@ async function authenticate() {
         
         if (fs.existsSync(TOKEN_PATH)) {
             try {
-                const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
-                oauth2Client.setCredentials(token);
-                return resolve(true);
+                // Kiểm tra xem phiên bản quyền cũ có khớp với bản mới không
+                let needsReauth = true;
+                if (fs.existsSync(VERSION_PATH)) {
+                    const savedVersion = fs.readFileSync(VERSION_PATH, 'utf8');
+                    if (savedVersion === SCOPES_VERSION) needsReauth = false;
+                }
+
+                if (!needsReauth) {
+                    const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
+                    oauth2Client.setCredentials(token);
+                    return resolve(true);
+                }
             } catch (err) {}
         }
 
@@ -88,6 +99,7 @@ async function authenticate() {
                         const { tokens } = await oauth2Client.getToken(code);
                         oauth2Client.setCredentials(tokens);
                         fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens));
+                        fs.writeFileSync(VERSION_PATH, SCOPES_VERSION); // Lưu lại phiên bản quyền đã cấp
                         authWindow.close();
                         resolve(true); 
                     } catch (err) {

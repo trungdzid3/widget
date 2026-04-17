@@ -22,22 +22,21 @@ const { ipcRenderer } = require('electron');
 // ===== DỮ LIỆU ÂM NHẠC ĐA TẦNG (CAT TIER 2) =====
 const musicGenres = {
     lofi: [
-        { name: 'Lofi Chill 1', url: 'https://cdn.stream.chillhop.com/audio/chillhop-stream-live-128.mp3' },
         { name: 'Lofi Radio 2', url: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
-        { name: 'Classic Lofi', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' },
-        { name: 'Relaxing Beat', url: 'http://stream.psychomed.gr/jazz.mp3' }
+        { name: 'Lofi Girl Live', url: 'https://stream.zeno.fm/0r0xa792kwzuv' },
+        { name: 'Chill Beats', url: 'https://streams.ilovemusic.de/iloveradio10.mp3' }
     ],
     jazz: [
-        { name: 'Smooth Jazz', url: 'http://stream.psychomed.gr/jazz.mp3' },
-        { name: 'Midnight Cafe', url: 'https://streams.ilovemusic.de/iloveradio10.mp3' }
+        { name: 'Smooth Jazz', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3' },
+        { name: 'Tokyo Cafe', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' }
     ],
     nature: [
-        { name: 'Rainy Night', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' },
-        { name: 'Forest Bird', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' } 
+        { name: 'Rainy Zen', url: 'https://stream.zeno.fm/f3wvbbqmdg8uv' }, 
+        { name: 'Summer Night', url: 'https://streams.ilovemusic.de/iloveradio1.mp3' } 
     ],
-    coding: [
-        { name: 'Cyberpunk Radio', url: 'https://nightride.fm/stream/nightride.m4a' },
-        { name: 'Syntax Stream', url: 'https://nightride.fm/stream/nightride.m4a' }
+    synth: [
+        { name: 'Nightride FM', url: 'https://nightride.fm/stream/nightride.m4a' },
+        { name: 'Space Synth', url: 'https://nightride.fm/stream/chiptune.m4a' }
     ]
 };
 
@@ -119,8 +118,10 @@ if (musicPrev) musicPrev.onclick = () => {
 
 if (nowPlaying) nowPlaying.onclick = () => {
     const catTier = RPG.getOwnedPetTier('cat');
-    if (catTier < 2 && !isTestMode) {
-        msgBox.innerText = "Yêu cầu Mèo Thần Tier 2 để mở khóa thể loại mới! 🐱🎻";
+    
+    // Level 26 Boss thì mở full luôn nhé
+    if (catTier < 1 && !isTestMode) {
+        showToast("Hệ thống Radio yêu cầu Boss phải có Mèo Thần! 🐱🎻");
         return;
     }
 
@@ -128,9 +129,37 @@ if (nowPlaying) nowPlaying.onclick = () => {
     const gIdx = (genres.indexOf(currentGenre) + 1) % genres.length;
     currentGenre = genres[gIdx];
     currentTrackIdx = 0;
-    msgBox.innerText = `Thể loại: ${currentGenre.toUpperCase()} 🎧`;
-    nextTrack(); // Random luôn bài mới khi đổi thể loại
+    
+    showToast(`📻 Chuyển sang thể loại: ${currentGenre.toUpperCase()}`, 'info');
+    nextTrack(); 
 };
+
+// ===== ĐIỀU KHIỂN ÂM LƯỢNG & MUTE =====
+if (volSlider) {
+    volSlider.oninput = () => {
+        const val = volSlider.value / 100;
+        audioPlayer.volume = val;
+        volIcon.innerText = val === 0 ? '🔇' : (val < 0.5 ? '🔉' : '🔊');
+    };
+}
+
+if (volIcon) {
+    let lastVol = 0.5;
+    volIcon.onclick = () => {
+        if (audioPlayer.volume > 0) {
+            lastVol = audioPlayer.volume;
+            audioPlayer.volume = 0;
+            volSlider.value = 0;
+            volIcon.innerText = '🔇';
+            showToast("Đã tắt tiếng 🔇");
+        } else {
+            audioPlayer.volume = lastVol;
+            volSlider.value = lastVol * 100;
+            volIcon.innerText = lastVol < 0.5 ? '🔉' : '🔊';
+            showToast(`Âm lượng: ${Math.round(lastVol * 100)}% 🔊`);
+        }
+    };
+}
 
 
 // ===== LOGIC MASCOT POMODORO =====
@@ -318,6 +347,41 @@ document.addEventListener('DOMContentLoaded', () => {
     RPG.init();
     checkPetPrivileges();
     updateDisplay();
+});
+
+// Hệ thống Toast thông báo (Cải tiến trực quan)
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerText = message;
+    
+    container.appendChild(toast);
+    
+    // Tự hủy sau khi hiệu ứng toast-out kết thúc
+    setTimeout(() => {
+        if (toast.parentNode) container.removeChild(toast);
+    }, 3000);
+
+    // Hiệu ứng nháy nhẹ cho Now Playing để gây chú ý
+    if (nowPlaying) {
+        nowPlaying.style.color = '#fff';
+        nowPlaying.style.textShadow = '0 0 8px #fff';
+        setTimeout(() => {
+            nowPlaying.style.color = '';
+            nowPlaying.style.textShadow = '';
+        }, 500);
+    }
+}
+
+ipcRenderer.on('pomo-finished', (e, type) => {
+    if (type === 'work') {
+        showToast("✨ Đã xong hiệp học! Giải lao thôi Boss.", 'info');
+    } else {
+        showToast("⏰ Đã hết giờ nghỉ! Vào việc thôi Boss.", 'info');
+    }
 });
 
 ipcRenderer.send('pomo-command', 'sync');

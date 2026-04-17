@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut, powerMonitor } = require('electron');
+const { app, BrowserWindow, session, Tray, Menu, ipcMain, screen, dialog, net, globalShortcut, powerMonitor, shell } = require('electron');
 
 // --- TỐI ƯU HỆ THỐNG & ĐỒ HỌA ---
 app.setAppUserModelId('com.trungdz.pixelwidget');
@@ -109,7 +109,7 @@ function saveRPGState(s) {
     try { fs.writeFileSync(RPG_STATE_FILE, JSON.stringify(s)); } catch(e) {}
 }
 
-const pomoState = { isRunning: false, timeLeft: 1500, isBreak: false, type: 'egg', luckyBonus: 0, startTime: 0 };
+const pomoState = { isRunning: false, timeLeft: 1500, isBreak: false, type: 'egg', luckyBonus: 0, startTime: 0, lastStudySeconds: 1500 };
 let pomoTimer = null;
 const isTestMode = process.argv.includes('--test-mode');
 
@@ -126,14 +126,28 @@ function startPomoTick() {
             pomoState.timeLeft--;
             broadcastPomo();
         } else if (pomoState.isRunning && pomoState.timeLeft <= 0) {
-            pomoState.isRunning = false;
-            clearInterval(pomoTimer);
+            // Hết giờ!
             if (!pomoState.isBreak) {
+                // Hết giờ học -> Tự động chuyển sang Nghỉ
                 pomoState.isBreak = true;
-                pomoState.timeLeft = isTestMode ? 5 : 5 * 60;
+                // Công thức: Nghỉ = Học / 5
+                pomoState.timeLeft = isTestMode ? 5 : Math.floor(pomoState.lastStudySeconds / 5);
+                pomoState.isRunning = true; // Luôn chạy tiếp
+                
+                // Gửi thông báo kết thúc để Renderer phát âm thanh
+                BrowserWindow.getAllWindows().forEach(w => {
+                    if (!w.isDestroyed()) w.webContents.send('pomo-finished', 'work');
+                });
             } else {
+                // Hết giờ nghỉ -> Dừng lại
+                pomoState.isRunning = false;
                 pomoState.isBreak = false;
                 pomoState.timeLeft = isTestMode ? 5 : 1500;
+                clearInterval(pomoTimer);
+                
+                BrowserWindow.getAllWindows().forEach(w => {
+                    if (!w.isDestroyed()) w.webContents.send('pomo-finished', 'break');
+                });
             }
             broadcastPomo();
         }
@@ -387,7 +401,7 @@ ipcMain.on('open-sidebar', openSidebar);
 ipcMain.on('close-sidebar', closeSidebar);
 ipcMain.on('toggle-widget', (e, name, isVisible) => {
     isWidgetChanging = true; 
-    setTimeout(() => { isWidgetChanging = false; }, 1000); // Khóa 1s để tránh Sidebar đóng nhầm khi hiện widget mới
+    setTimeout(() => { isWidgetChanging = false; }, 1000); 
 
     mState.active[name] = isVisible;
     saveState(mState);
@@ -400,6 +414,10 @@ ipcMain.on('toggle-widget', (e, name, isVisible) => {
         windowMap[name] = null;
     }
     if (launcherWin) launcherWin.webContents.send('sync-launcher-ui', mState);
+});
+
+ipcMain.on('open-url', (e, url) => {
+    if (url.startsWith('http')) shell.openExternal(url);
 });
 
 ipcMain.on('pin-widget', (e, name, isPinned) => {
@@ -440,7 +458,10 @@ ipcMain.handle('fetch-apple-calendar', (e, urlStr) => {
 ipcMain.on('pomo-command', (e, cmd, data) => {
     if (cmd === 'start') {
         pomoState.isRunning = true;
-        pomoState.timeLeft = (data && data.time !== undefined) ? (isTestMode ? 5 : data.time) : pomoState.timeLeft;
+        if (data && data.time !== undefined) {
+            pomoState.timeLeft = isTestMode ? 5 : data.time;
+            if (!data.isBreak) pomoState.lastStudySeconds = data.time; // Lưu lại mốc học để tính thời gian nghỉ
+        }
         if (data && data.isBreak !== undefined) pomoState.isBreak = data.isBreak;
         if (data && data.type) pomoState.type = data.type;
         startPomoTick();

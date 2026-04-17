@@ -22,7 +22,7 @@ const RPG = {
         coins: 10,
         inventory: [],
         lastAward: 0,
-        ownedSpecies: ['dog', 'bunny', 'dragon', 'owl', 'cat', 'plant']
+        ownedSpecies: ['dog', 'bunny', 'dragon', 'owl', 'cat', 'mascot', 'plant']
     },
 
     // Kiểm tra sở hữu Pet (Dùng cho Đặc quyền)
@@ -168,6 +168,18 @@ const RPG = {
         const saved = localStorage.getItem('rpg_player_v2');
         if (saved) {
             this.state = { ...this.state, ...JSON.parse(saved) };
+            
+            // MIGRATION: Đảm bảo người dùng cũ cũng có đủ các loài mới mở khóa
+            const allSpecies = ['dog', 'bunny', 'dragon', 'owl', 'cat', 'mascot', 'plant'];
+            let changed = false;
+            allSpecies.forEach(s => {
+                if (!this.state.ownedSpecies.includes(s)) {
+                    this.state.ownedSpecies.push(s);
+                    changed = true;
+                }
+            });
+            if (changed) this.save();
+
         } else {
             this.save(); // Save defaults if new
         }

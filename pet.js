@@ -135,81 +135,10 @@ window.buyShopItem = (id, cost, name, type, value) => {
     renderPet();
 };
 
-window.buyEgg = (eggType, cost, name) => {
-    if (RPG.state.coins < cost) { showToast('❌ Không đủ Xu!'); return; }
-    
-    if (eggType === 'target') {
-        showToast('🎯 Hãy chọn Pet bạn muốn mở khóa!');
-        window.closeModals();
-        showSpeciesPicker(true); // targeted mode
-        return;
-    }
-
-    // Random Egg Logic
-    RPG.state.coins -= cost;
-    const allKeys = Object.keys(PET_SPECIES);
-    const rolled = allKeys[Math.floor(Math.random() * allKeys.length)];
-    
-    revealEgg(rolled, cost);
-};
+// Removed buyEgg and revealEgg functions - All species now unlocked by default.
 
 function revealEgg(species, costSpent) {
-    window.closeModals();
-    const overlay = document.createElement('div');
-    overlay.className = 'shop-modal';
-    overlay.style.zIndex = "1000";
-    overlay.innerHTML = `
-        <div class="gacha-reveal-box">
-            <div id="gacha-egg">🥚</div>
-            <div id="gacha-msg">Đang ấp trứng...</div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    const egg = document.getElementById('gacha-egg');
-    const msg = document.getElementById('gacha-msg');
-
-    // Animation sequence
-    setTimeout(() => { egg.style.transform = 'rotate(-15deg)'; }, 500);
-    setTimeout(() => { egg.style.transform = 'rotate(15deg)'; }, 1000);
-    setTimeout(() => { egg.style.transform = 'rotate(-20deg) scale(1.1)'; }, 1500);
-    setTimeout(() => { 
-        egg.style.transform = 'scale(2)'; 
-        egg.style.opacity = '0';
-        msg.innerText = 'BÙM! ✨';
-    }, 2000);
-
-    setTimeout(() => {
-        const isNew = !RPG.state.ownedSpecies.includes(species);
-        if (isNew) {
-            RPG.state.ownedSpecies.push(species);
-            msg.innerHTML = `<div class="gacha-title">BẠN ĐÃ MỞ KHÓA:</div><div class="gacha-pet-name">${PET_SPECIES[species].label}</div>`;
-        } else {
-            // Refund/Compensation
-            const bonusXP = 500;
-            // Add XP to the specific pet in storage
-            let allPets = JSON.parse(localStorage.getItem('rpg_all_pets')) || {};
-            if (!allPets[species]) allPets[species] = { lv: 1, exp: 0 };
-            allPets[species].exp += bonusXP;
-            localStorage.setItem('rpg_all_pets', JSON.stringify(allPets));
-            
-            msg.innerHTML = `<div class="gacha-comp-title">BẠN ĐÃ CÓ ${PET_SPECIES[species].label}</div><div class="gacha-comp-val">+${bonusXP} XP ĐỀN BÙ!</div>`;
-            
-            // If current pet is the same, sync it
-            if (myPet.species === species) {
-                myPet.exp += bonusXP;
-            }
-        }
-        
-        RPG.save();
-        renderPet();
-        
-        const closeHint = document.createElement('div');
-        closeHint.innerText = '(Bấm để đóng)';
-        closeHint.style.marginTop = '20px';
-        overlay.appendChild(closeHint);
-        overlay.onclick = () => overlay.remove();
-    }, 2500);
+    // Logic removed.
 }
 
 // ===== CORE LOGIC =====
@@ -391,20 +320,8 @@ function renderSpeciesPicker(isTargeted = false) {
         btn.innerHTML = `${emojis[key]}<br><small>${spec.label}</small>`;
 
         btn.onclick = () => {
-            if (isTargeted && !isOwned) {
-                // Targeted buying logic
-                const cost = 400;
-                if (RPG.state.coins < cost) { showToast('❌ Không đủ 400 Xu!'); return; }
-                RPG.state.coins -= cost;
-                RPG.state.ownedSpecies.push(key);
-                RPG.save();
-                showToast(`✨ Đã mở khóa ${spec.label}!`);
-                renderSpeciesPicker(false);
-                return;
-            }
-
             if (!isOwned) {
-                showToast('🔒 Bạn chưa sở hữu loài này. Hãy mua Trứng trong Shop!');
+                // Should not happen now as all are unlocked, but keeping safety check
                 return;
             }
 
