@@ -326,7 +326,7 @@ function createWindows() {
     const hb = getBounds('handle', hw, hh, width - hw, Math.floor(height / 2) - 30);
 
     handleWin = new BrowserWindow({
-        width: hw, height: hh, x: hb.x, y: hb.y,
+        width: hw, height: hh, x: width - hw, y: hb.y,
         transparent: true, frame: false, alwaysOnTop: true, resizable: false, skipTaskbar: true,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
@@ -358,6 +358,14 @@ function createWindows() {
     ipcMain.on('handle-drag', () => {
         const { width, height } = screen.getPrimaryDisplay().workAreaSize, cursor = screen.getCursorScreenPoint();
         handleWin.setPosition(width - 24, Math.max(0, Math.min(cursor.y - handleWin._dragOffset.y, height - 60)));
+    });
+
+    ipcMain.on('set-handle-width', (e, w) => {
+        if (!handleWin || handleWin.isDestroyed()) return;
+        const { width: scrW } = screen.getPrimaryDisplay().workAreaSize;
+        const [currW, currH] = handleWin.getSize();
+        const [currX, currY] = handleWin.getPosition();
+        handleWin.setBounds({ width: w, height: currH, x: scrW - w, y: currY });
     });
 
     ipcMain.on('resize-launcher', (e, h) => {

@@ -44,9 +44,11 @@
 
         /* Chế độ nghỉ (Idle) - Làm mờ và lùi về viền */
         body.edge.idle .handle {
-            transform: translateX(16px);
+            width: 15px;
+            transform: translateX(10px);
             background: rgba(255, 237, 242, 0.1);
             border-color: transparent;
+            border-radius: 10px 0 0 10px;
         }
         body.edge.idle .handle img { opacity: 0; }
     </style>
@@ -98,11 +100,17 @@ window.addEventListener('pointerup', (e) => {
 });
 let idleTimer;
 function resetIdle() {
+    if (document.body.classList.contains('idle')) {
+        ipcRenderer.send('set-handle-width', 24);
+    }
     document.body.classList.remove('idle');
     clearTimeout(idleTimer);
     if (!isDragging) {
         idleTimer = setTimeout(() => {
-            if (!isDragging) document.body.classList.add('idle');
+            if (!isDragging) {
+                document.body.classList.add('idle');
+                ipcRenderer.send('set-handle-width', 15);
+            }
         }, 2000);
     }
 }

@@ -10,52 +10,40 @@
     <div class="pet-container" id="pet-container">
         <div class="pet-header">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="title" title="Pet">🐾 Pet</span>
+                <span class="title" title="Tinh Linh Thú">🐾 Tinh Linh Thú</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="pet-coins" title="Tiền Xu">🪙 <span id="coin-display">0</span></div>
-                <span class="drag-handle" title="Kéo để di chuyển">🖐</span>
-            </div>
+            <div class="pet-coins" title="Tiền Xu">🪙 <span id="coin-display">0</span></div>
+            <span class="drag-handle" title="Kéo để di chuyển">🖐</span>
         </div>
 
         <!-- Shop Modal -->
-        <div id="shop-modal" class="shop-modal" style="display:none;" onclick="if(event.target === this) window.closeModals()">
+        <div id="shop-modal" class="shop-modal" style="display:none;">
             <div class="shop-content">
-                <div class="shop-header">🛒 Cửa Hàng <button type="button" id="close-shop-btn" class="close-shop-btn" onclick="window.closeModals()">✖</button></div>
+                <div class="shop-header">🛒 Cửa Hàng <span id="close-shop-btn" class="close-btn" onclick="document.getElementById('shop-modal').style.display='none'">✖</span></div>
                 <div class="shop-items">
-                    <!-- Siêu Thuốc Tiến Hóa (Test) sẽ được tự động thêm vào đây khi ở chế độ npm run test -->
-
                     <div class="shop-item" onclick="buyShopItem('cookie', 5, 'Bánh Quy', 'food', 15)">
                         <div class="item-icon">🍪</div>
-                        <div class="item-details">
-                            <div class="item-name">Bánh Quy</div>
-                            <div class="item-desc">+15 XP</div>
-                        </div>
+                        <div class="item-name">Bánh Quy (+15XP)</div>
                         <div class="item-cost">5 Xu</div>
                     </div>
                     <div class="shop-item" onclick="buyShopItem('apple', 20, 'Táo Vàng', 'food', 50)">
                         <div class="item-icon">🍎</div>
-                        <div class="item-details">
-                            <div class="item-name">Táo Vàng</div>
-                            <div class="item-desc">+50 XP</div>
-                        </div>
+                        <div class="item-name">Táo Vàng (+50XP)</div>
                         <div class="item-cost">20 Xu</div>
                     </div>
                     <div class="shop-item" onclick="buyShopItem('meat', 40, 'Đùi Thịt', 'food', 120)">
                         <div class="item-icon">🍖</div>
-                        <div class="item-details">
-                            <div class="item-name">Đùi Thịt</div>
-                            <div class="item-desc">+120 XP</div>
-                        </div>
+                        <div class="item-name">Đùi Thịt (+120XP)</div>
                         <div class="item-cost">40 Xu</div>
                     </div>
-
+                    <div class="shop-item" onclick="buyShopItem('potion', 50, 'Thuốc Hồi Kỹ Năng', 'instant', 0)">
+                        <div class="item-icon">🧪</div>
+                        <div class="item-name">Thuốc Hồi KN (Dùng Ngay)</div>
+                        <div class="item-cost">50 Xu</div>
+                    </div>
                     <div class="shop-item" onclick="buyShopItem('box', 30, 'Hộp Bí Ẩn', 'instant', 0)">
                         <div class="item-icon">🎁</div>
-                        <div class="item-details">
-                            <div class="item-name">Hộp Bí Ẩn</div>
-                            <div class="item-desc">Dùng Ngay</div>
-                        </div>
+                        <div class="item-name">Hộp Bí Ẩn (Dùng Ngay)</div>
                         <div class="item-cost">30 Xu</div>
                     </div>
                 </div>
@@ -63,10 +51,9 @@
         </div>
 
         <!-- Inventory Modal (Túi thức ăn) -->
-        <div id="inventory-modal" class="shop-modal" style="display:none;" onclick="if(event.target === this) window.closeModals()">
+        <div id="inventory-modal" class="shop-modal" style="display:none;">
             <div class="shop-content">
-                <div class="shop-header">🎒 Túi Food <button type="button" id="close-inv-btn" class="close-inv-btn" onclick="window.closeModals()">✖</button></div>
-
+                <div class="shop-header">🎒 Túi Food <span class="close-btn" onclick="document.getElementById('inventory-modal').style.display='none'">✖</span></div>
                 <div class="shop-items" id="inventory-items">
                     <!-- Sẽ render bằng JS -->
                 </div>
@@ -80,9 +67,7 @@
                 <button class="species-btn" data-species="cat">🐱<br><small>Mèo Thần</small></button>
                 <button class="species-btn" data-species="dragon">🐉<br><small>Rồng Thần</small></button>
                 <button class="species-btn" data-species="bunny">🐰<br><small>Thỏ Trăng</small></button>
-                <button class="species-btn" data-species="mascot">🐣<br><small>Mascot</small></button>
-                <button class="species-btn" data-species="dog">🐶<br><small>Chó</small></button>
-                <button class="species-btn" data-species="owl">🦉<br><small>Cú Mèo</small></button>
+                <button class="species-btn" data-species="butterfly">🦋<br><small>Bướm Tiên</small></button>
             </div>
         </div>
 
@@ -95,19 +80,16 @@
 
             <div class="pet-dashboard">
                 <div class="pet-info">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <div class="pet-name" id="pet-name">Trứng Bí Ẩn</div>
-                        <button id="change-species-btn" class="change-species-btn" title="Đổi loài">↩ Đổi</button>
-                    </div>
+                    <div class="pet-name" id="pet-name">Trứng Bí Ẩn</div>
                     <div class="pet-level">Lv.<span id="pet-lv">1</span></div>
                 </div>
 
                 <!-- Thanh EXP của Pet -->
                 <div class="exp-bar-wrap">
                     <div class="exp-bar-track">
-                          <div class="exp-bar-fill" id="exp-bar"></div>
-                          <div class="exp-text-overlay"><span id="pet-exp-cur">0</span> / <span id="pet-exp-req">60</span> XP</div>
-                      </div>
+                        <div class="exp-bar-fill" id="exp-bar"></div>
+                    </div>
+                    <div class="exp-bar-label"><span id="pet-exp-cur">0</span> / <span id="pet-exp-req">60</span> XP</div>
                 </div>
 
                 <div class="pet-actions">
@@ -115,15 +97,18 @@
                         <button id="feed-btn" class="action-btn feed" onclick="window.openInventory()">🎒 Túi Đồ</button>
                         <button id="shop-btn" class="action-btn shop" onclick="document.getElementById('shop-modal').style.display='flex'">🛒 Mua Đồ</button>
                     </div>
-                    
+                    <button id="skill-btn" class="action-btn skill-locked" disabled>✨ KN (Khóa)</button>
                 </div>
             </div>
 
             <!-- Trạng thái Buff đang chạy -->
             <div id="buff-status" class="buff-status" style="display:none;"></div>
+
+
+            <!-- Đổi loài (chỉ hiện khi lv 1) -->
+            <button id="change-species-btn" class="change-species-btn" style="display:none;" title="Đổi loài (chỉ khi Lv.1)">↩ Đổi Loài</button>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <script src="rpg-system.js"></script>
     <script src="pet.js"></script>
 </body>
